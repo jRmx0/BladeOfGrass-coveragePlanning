@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Communication Test</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>JSON Communication Test</h1>
+        <p>Click the button to send JSON data to the C server and see the response in the console and log below.</p>
+        
+        <button id="sendButton" onclick="sendMessage()">Send JSON Message</button>
+        <button id="clearButton" onclick="clearLog()">Clear Log</button>
+        
+        <div id="status"></div>
+        
+        <div class="log">
+            <h3>Communication Log:</h3>
+            <div id="logContent">
+                <div class="log-entry">
+                    <span class="timestamp">[Ready]</span> Open browser console (F12) to see detailed responses
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
