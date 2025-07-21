@@ -5,8 +5,8 @@
 #include "mongoose/mongoose.h"
 
 typedef enum {
-    ROUTE_TEST,
     ROUTE_SEND,
+    ROUTE_TEST,
     ROUTE_STYLES,
     ROUTE_SCRIPT,
     ROUTE_UNKNOWN
@@ -42,14 +42,14 @@ static void fn(struct mg_connection *c, int ev, void *ev_data)
         
         switch (get_route_type(hm->uri)) 
         {
-            case ROUTE_TEST:
-                handle_test_route(c, hm);
-                break;
-                
             case ROUTE_SEND:
                 handle_send_route(c, hm);
                 break;
-                
+            
+            case ROUTE_TEST:
+                handle_test_route(c, hm);
+                break;
+
             case ROUTE_STYLES:
                 handle_styles_route(c, hm);
                 break;
@@ -68,8 +68,8 @@ static void fn(struct mg_connection *c, int ev, void *ev_data)
 
 static void handle_test_route(struct mg_connection *c, struct mg_http_message *hm)
 {
-    struct mg_http_serve_opts opts = {.root_dir = "../../test/web"};
-    mg_http_serve_file(c, hm, "../../web/test/index.html", &opts);
+    struct mg_http_serve_opts opts = {.root_dir = "../../web/test"};
+    mg_http_serve_file(c, hm, "../../web/test/test-index.html", &opts);
 }
 
 static void handle_send_route(struct mg_connection *c, struct mg_http_message *hm)
@@ -101,13 +101,13 @@ static void handle_send_route(struct mg_connection *c, struct mg_http_message *h
 static void handle_styles_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/test"};
-    mg_http_serve_file(c, hm, "../../web/test/styles.css", &opts);
+    mg_http_serve_file(c, hm, "../../web/test/test-styles.css", &opts);
 }
 
 static void handle_script_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/test"};
-    mg_http_serve_file(c, hm, "../../web/test/script.js", &opts);
+    mg_http_serve_file(c, hm, "../../web/test/test-script.js", &opts);
 }
 
 static void handle_not_found(struct mg_connection *c, struct mg_http_message *hm)
@@ -117,16 +117,16 @@ static void handle_not_found(struct mg_connection *c, struct mg_http_message *hm
 
 static route_type_t get_route_type(struct mg_str uri)
 {
-    if (mg_strcmp(uri, mg_str("/test")) == 0) {
-        return ROUTE_TEST;
-    }
     if (mg_strcmp(uri, mg_str("/send")) == 0) {
         return ROUTE_SEND;
     }
-    if (mg_strcmp(uri, mg_str("/styles.css")) == 0) {
+    if (mg_strcmp(uri, mg_str("/test")) == 0) {
+        return ROUTE_TEST;
+    }
+    if (mg_strcmp(uri, mg_str("/test-styles.css")) == 0) {
         return ROUTE_STYLES;
     }
-    if (mg_strcmp(uri, mg_str("/script.js")) == 0) {
+    if (mg_strcmp(uri, mg_str("/test-script.js")) == 0) {
         return ROUTE_SCRIPT;
     }
     return ROUTE_UNKNOWN;
