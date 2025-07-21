@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "cJSON/cJSON.h"
+#include "../dependencies/cJSON/cJSON.h"
 
 int main()
 {

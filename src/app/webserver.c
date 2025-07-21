@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "webserver.h"
-#include "cJSON/cJSON.h"
+#include "../../dependencies/cJSON/cJSON.h"
 
 void webserver_init(struct mg_mgr *mgr, const char *listen_url)
 {

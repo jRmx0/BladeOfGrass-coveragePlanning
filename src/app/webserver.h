@@ -1,7 +1,7 @@
 #ifndef WEBSERVER_H
 #define WEBSERVER_H
 
-#include "mongoose/mongoose.h"
+#include "../../dependencies/mongoose/mongoose.h"
 
 typedef enum {
     ROUTE_SEND,

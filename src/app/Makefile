@@ -3,7 +3,7 @@
 CC = gcc
 CFLAGS = -I./cJSON
 LIBS = -lws2_32
-SRC = main.c webserver.c cJSON/cJSON.c mongoose/mongoose.c
+SRC = main.c webserver.c ../../dependencies/cJSON/cJSON.c ../../dependencies/mongoose/mongoose.c
 BUILD_DIR = build
 OUT = $(BUILD_DIR)/main.exe
 
