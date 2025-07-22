@@ -204,6 +204,43 @@ input[type="number"]:focus {
     font-family: monospace;
 }
 
+/* Checkbox styling for visualization options */
+.data-item input[type="checkbox"] {
+    margin-right: 8px;
+    transform: scale(1.2);
+    cursor: pointer;
+}
+
+.data-item label:has(input[type="checkbox"]) {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+}
+
+/* Server status styling */
+#serverStatus {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+#serverStatus:contains("Connected") {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+#serverStatus:contains("Error") {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+#serverStatus:contains("Not connected") {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .container {
