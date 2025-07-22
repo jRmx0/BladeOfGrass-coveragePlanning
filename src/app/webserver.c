@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "webserver.h"
+#include "pathPlanner.h"
 #include "../../dependencies/cJSON/cJSON.h"
 
 void webserver_init(struct mg_mgr *mgr, const char *listen_url)
@@ -94,31 +95,42 @@ void handle_path_calculate_route(struct mg_connection *c, struct mg_http_message
     memcpy(body_str, hm->body.buf, hm->body.len);
     body_str[hm->body.len] = '\0';
     
-    cJSON *json = cJSON_Parse(body_str);
-    if (!json) {
+    printf("Received path calculation request\n");
+    
+    // Parse the request using the path planner
+    PathRequest* request = parse_path_request(body_str);
+    if (!request) {
         free(body_str);
         mg_http_reply(c, 400, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", 
-                      "{\"error\":\"Invalid JSON\"}");
+                      "{\"error\":\"Invalid JSON or failed to parse request\"}");
+        return;
+    }
+        
+    // Calculate the coverage path
+    PathResponse* response = calculate_coverage_path(request);
+    if (!response) {
+        free_path_request(request);
+        free(body_str);
+        mg_http_reply(c, 500, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n", 
+                      "{\"error\":\"Failed to calculate path\"}");
         return;
     }
     
-    const cJSON *boundary = cJSON_GetObjectItemCaseSensitive(json, "boundary");
-    const cJSON *mowerWidth = cJSON_GetObjectItemCaseSensitive(json, "mowerWidth");
-    const cJSON *pathOverlap = cJSON_GetObjectItemCaseSensitive(json, "pathOverlap");
+    // Generate JSON response
+    char* response_json = generate_path_response_json(response);
+        
+    // Send response with safer format string
+    const char* headers = "Content-Type: application/json\r\n"
+                         "Access-Control-Allow-Origin: *\r\n"
+                         "Access-Control-Allow-Methods: POST, GET, OPTIONS\r\n"
+                         "Access-Control-Allow-Headers: Content-Type\r\n";
     
-    // TODO: Implement actual path calculation algorithm
-    // For now, return a simple response
-    char response[512];
-    snprintf(response, sizeof(response), 
-             "{\"status\":\"success\",\"message\":\"Path calculation received\",\"pathPoints\":[]}");
+    mg_http_reply(c, 200, headers, "%s", response_json);
     
-    printf("Path calculation request received\n");
-    
-    cJSON_Delete(json);
+    free(response_json);
+    free_path_response(response);
+    free_path_request(request);
     free(body_str);
-    
-    mg_http_reply(c, 200, "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\n", 
-                  "%s", response);
 }
 
 
