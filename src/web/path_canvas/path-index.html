@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Mower Path Planning Test</title>
+    <link rel="stylesheet" href="path-styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Left Panel - Controls -->
+        <div class="left-panel">
+            <h2>Controls</h2>
+            <div class="controls-group">
+                <h3>Drawing Tools</h3>
+                <button id="drawBoundary" class="control-btn">Draw Boundary</button>
+                <button id="clearCanvas" class="control-btn">Clear Canvas</button>
+                <button id="calculatePath" class="control-btn">Calculate Path</button>
+                <button id="calculatePathC" class="control-btn">Calculate Path (C)</button>
+            </div>
+            <div class="controls-group">
+                <h3>Canvas Controls</h3>
+                <button id="resetView" class="control-btn">Reset View</button>
+                <button id="toggleGrid" class="control-btn">Toggle Grid</button>
+            </div>
+            <div class="controls-group">
+                <h3>Settings</h3>
+                <label for="mowerWidth">Mower Width (m):</label>
+                <input type="number" id="mowerWidth" value="0.25" min="0.10" max="1.00" step="0.05">
+                <label for="pathOverlap">Path Overlap (m):</label>
+                <input type="number" id="pathOverlap" value="0.05" min="0.00" max="0.50" step="0.01">
+            </div>
+        </div>
+
+        <!-- Center Panel - Canvas -->
+        <div class="center-panel">
+            <h2>Mowing Area Planning</h2>
+            <div class="canvas-container">
+                <canvas id="pathCanvas"></canvas>
+                <div class="canvas-info">
+                    <span id="canvasCoords">Mouse: (0, 0)</span>
+                    <span id="zoomLevel">Zoom: 100%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Data -->
+        <div class="right-panel">
+            <h2>Data</h2>
+            <div class="data-group">
+                <h3>Area Information</h3>
+                <div class="data-item">
+                    <label>Boundary Points:</label>
+                    <span id="boundaryPoints">0</span>
+                </div>
+                <div class="data-item">
+                    <label>Area (approx):</label>
+                    <span id="areaSize">0.00</span> m²
+                </div>
+                <div class="data-item">
+                    <label>Path Length:</label>
+                    <span id="pathLength">0.00</span> m
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="path-script.js"></script>
+</body>
+</html>
