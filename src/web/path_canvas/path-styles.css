@@ -145,19 +145,6 @@ input[type="number"]:focus {
     min-height: calc(100vh - 60px);
 }
 
-#pathCanvas {
-    border: 1px solid #ddd;
-    background-color: white;
-    cursor: crosshair;
-    border-radius: 4px;
-    max-width: 100%;
-    max-height: 100%;
-}
-
-#pathCanvas.panning {
-    cursor: grabbing;
-}
-
 .canvas-info {
     position: absolute;
     top: 10px;
@@ -277,22 +264,4 @@ input[type="number"]:focus {
 .canvas-container.drawing {
     border-color: #3498db;
     background-color: #e8f4f8;
-}
-
-.canvas-container.calculating {
-    border-color: #f39c12;
-    background-color: #fef9e7;
-}
-
-.canvas-container.calculating::after {
-    content: "Calculating...";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(243, 156, 18, 0.9);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 4px;
-    font-weight: bold;
 }

@@ -6,18 +6,9 @@ class PathPlanningApp {
         
         // State variables
         this.boundaryPoints = [];
-        this.pathPoints = [];
         this.isDrawingBoundary = false;
         this.isDragging = false;
         this.showGrid = true;
-        
-        // Server response data
-        this.serverResponse = null;
-        this.decompositionPoints = [];
-        this.calculatedPathPoints = [];
-        this.showDecomposition = true;
-        this.showCalculatedPath = true;
-        this.showLocalPath = true;
         
         // Canvas transform state
         this.scale = 1;
@@ -43,8 +34,6 @@ class PathPlanningApp {
         // Button event listeners
         document.getElementById('drawBoundary').addEventListener('click', () => this.toggleDrawingMode());
         document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
-        document.getElementById('calculatePath').addEventListener('click', () => this.calculatePath());
-        document.getElementById('calculatePathC').addEventListener('click', () => this.calculatePathC());
         document.getElementById('resetView').addEventListener('click', () => this.resetView());
         document.getElementById('toggleGrid').addEventListener('click', () => this.toggleGrid());
         
@@ -58,23 +47,7 @@ class PathPlanningApp {
             this.pathOverlap = parseFloat(e.target.value);
             this.updateDisplay();
         });
-        
-        // Visualization toggle listeners
-        document.getElementById('showDecomposition').addEventListener('change', (e) => {
-            this.showDecomposition = e.target.checked;
-            this.draw();
-        });
-        
-        document.getElementById('showCalculatedPath').addEventListener('change', (e) => {
-            this.showCalculatedPath = e.target.checked;
-            this.draw();
-        });
-        
-        document.getElementById('showLocalPath').addEventListener('change', (e) => {
-            this.showLocalPath = e.target.checked;
-            this.draw();
-        });
-        
+                
         // Canvas event listeners
         this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -142,10 +115,7 @@ class PathPlanningApp {
         this.serverResponse = null;
         this.decompositionPoints = [];
         this.calculatedPathPoints = [];
-        
-        // Reset server status
-        this.updateServerStatus('Not connected', null);
-        
+                
         // Reset draw boundary button
         const btn = document.getElementById('drawBoundary');
         btn.textContent = 'Draw Boundary';
@@ -171,232 +141,7 @@ class PathPlanningApp {
         this.updateDisplay();
         this.draw();
     }
-    
-    calculatePath() {
-        if (this.boundaryPoints.length < 3) {
-            alert('Please draw a boundary with at least 3 points first.');
-            return;
-        }
-        
-        const container = document.querySelector('.canvas-container');
-        container.classList.add('calculating');
-        
-        // Simple timeout to simulate calculation
-        setTimeout(() => {
-            this.generateCoveragePath();
-            container.classList.remove('calculating');
-            this.updateDisplay();
-            this.draw();
-        }, 500);
-    }
-    
-    async calculatePathC() {
-        if (this.boundaryPoints.length < 3) {
-            alert('Please draw a boundary with at least 3 points first.');
-            return;
-        }
-        
-        const btn = document.getElementById('calculatePathC');
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = 'Calculating...';
-        
-        try {
-            // Convert boundary points from pixels to meters for JSON output
-            const boundaryPointsMeters = this.boundaryPoints.map(point => ({
-                x: parseFloat((point.x / this.pixelsPerMeter).toFixed(3)),
-                y: parseFloat((point.y / this.pixelsPerMeter).toFixed(3))
-            }));
-            
-            // Create comprehensive JSON data for path calculation
-            const pathCalculationData = {
-                timestamp: new Date().toISOString(),
-                settings: {
-                    mowerWidth: this.mowerWidth,
-                    pathOverlap: this.pathOverlap
-                },
-                boundary: {
-                    pointCount: this.boundaryPoints.length,
-                    points: boundaryPointsMeters
-                }    
-            };
-            
-            console.log('Sending path calculation data to C server:', pathCalculationData);
-            
-            // Send POST request to C server
-            const response = await fetch('http://localhost:8000/path-calculate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(pathCalculationData)
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            // Parse JSON response
-            const responseData = await response.json();
-            
-            console.log('Response from C server:', responseData);
-            
-            // Process and store the server response
-            this.processServerResponse(responseData);
-            
-            // Visual feedback for success
-            btn.textContent = 'Path Calculated!';
-            btn.style.backgroundColor = '#27ae60';
-            setTimeout(() => {
-                btn.textContent = originalText;
-                btn.style.backgroundColor = '#3498db';
-            }, 1500);
-            
-        } catch (error) {
-            console.error('Error communicating with C server:', error);
-            
-            // Update server status
-            this.updateServerStatus('Error', null);
-            
-            // Visual feedback for error
-            btn.textContent = 'Error!';
-            btn.style.backgroundColor = '#e74c3c';
-            setTimeout(() => {
-                btn.textContent = originalText;
-                btn.style.backgroundColor = '#3498db';
-            }, 1500);
-        } finally {
-            btn.disabled = false;
-        }
-    }
-    
-    processServerResponse(responseData) {
-        // Store the complete response
-        this.serverResponse = responseData;
-        
-        // Convert decomposition points from meters to pixels
-        this.decompositionPoints = [];
-        if (responseData.decomposition && responseData.decomposition.decPoints) {
-            this.decompositionPoints = responseData.decomposition.decPoints.map(point => ({
-                x: point.x * this.pixelsPerMeter,
-                y: point.y * this.pixelsPerMeter
-            }));
-        }
-        
-        // Convert calculated path points from meters to pixels
-        this.calculatedPathPoints = [];
-        if (responseData.path && responseData.path.pathPoints) {
-            this.calculatedPathPoints = responseData.path.pathPoints.map(point => ({
-                x: point.x * this.pixelsPerMeter,
-                y: point.y * this.pixelsPerMeter
-            }));
-        }
-        
-        // Update server status
-        this.updateServerStatus('Connected', responseData);
-        
-        // Update display and redraw
-        this.updateDisplay();
-        this.draw();
-    }
-    
-    updateServerStatus(status, responseData) {
-        document.getElementById('serverStatus').textContent = status;
-        
-        if (responseData) {
-            // Update decomposition count
-            const decCount = responseData.decomposition ? responseData.decomposition.decPointCount : 0;
-            document.getElementById('decompositionCount').textContent = decCount;
-            
-            // Update calculated path count
-            const pathCount = responseData.path ? responseData.path.pathPointCount : 0;
-            document.getElementById('calculatedPathCount').textContent = pathCount;
-            
-            // Update timestamp
-            const timestamp = responseData.req_timestamp || '-';
-            const shortTimestamp = timestamp.includes('T') ? timestamp.split('T')[1].split('.')[0] : timestamp;
-            document.getElementById('responseTimestamp').textContent = shortTimestamp;
-        } else {
-            document.getElementById('decompositionCount').textContent = '0';
-            document.getElementById('calculatedPathCount').textContent = '0';
-            document.getElementById('responseTimestamp').textContent = '-';
-        }
-    }
-    
-    generateCoveragePath() {
-        this.pathPoints = [];
-        
-        if (this.boundaryPoints.length < 3) return;
-        
-        // Find bounding box of the boundary
-        const bounds = this.getBoundingBox(this.boundaryPoints);
-        
-        // Generate simple back-and-forth pattern
-        // Calculate spacing between path centers: mower width minus overlap
-        const pathCenterSpacing = (this.mowerWidth - this.pathOverlap) * this.pixelsPerMeter;
-        let y = bounds.minY + pathCenterSpacing;
-        let goingRight = true;
-        
-        while (y < bounds.maxY) {
-            const intersections = this.getHorizontalIntersections(y, this.boundaryPoints);
-            
-            if (intersections.length >= 2) {
-                intersections.sort((a, b) => a - b);
-                
-                // Take the leftmost and rightmost intersections
-                const startX = intersections[0];
-                const endX = intersections[intersections.length - 1];
-                
-                if (goingRight) {
-                    this.pathPoints.push({ x: startX, y: y });
-                    this.pathPoints.push({ x: endX, y: y });
-                } else {
-                    this.pathPoints.push({ x: endX, y: y });
-                    this.pathPoints.push({ x: startX, y: y });
-                }
-                
-                goingRight = !goingRight;
-            }
-            
-            y += pathCenterSpacing;
-        }
-    }
-    
-    getBoundingBox(points) {
-        if (points.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-        
-        let minX = points[0].x, maxX = points[0].x;
-        let minY = points[0].y, maxY = points[0].y;
-        
-        for (const point of points) {
-            minX = Math.min(minX, point.x);
-            maxX = Math.max(maxX, point.x);
-            minY = Math.min(minY, point.y);
-            maxY = Math.max(maxY, point.y);
-        }
-        
-        return { minX, maxX, minY, maxY };
-    }
-    
-    getHorizontalIntersections(y, boundary) {
-        const intersections = [];
-        
-        for (let i = 0; i < boundary.length; i++) {
-            const p1 = boundary[i];
-            const p2 = boundary[(i + 1) % boundary.length];
-            
-            // Check if the line segment crosses the horizontal line
-            if ((p1.y <= y && p2.y > y) || (p1.y > y && p2.y <= y)) {
-                // Calculate intersection point
-                const t = (y - p1.y) / (p2.y - p1.y);
-                const x = p1.x + t * (p2.x - p1.x);
-                intersections.push(x);
-            }
-        }
-        
-        return intersections;
-    }
-    
+                            
     handleMouseDown(e) {
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -495,22 +240,7 @@ class PathPlanningApp {
         if (this.boundaryPoints.length > 0) {
             this.drawBoundary();
         }
-        
-        // Draw decomposition (from server)
-        if (this.showDecomposition && this.decompositionPoints.length > 0) {
-            this.drawDecomposition();
-        }
-        
-        // Draw calculated path (from server)
-        if (this.showCalculatedPath && this.calculatedPathPoints.length > 0) {
-            this.drawCalculatedPath();
-        }
-        
-        // Draw local path (generated by JS)
-        if (this.showLocalPath && this.pathPoints.length > 0) {
-            this.drawPath();
-        }
-        
+                
         // Restore context
         this.ctx.restore();
     }
@@ -585,176 +315,10 @@ class PathPlanningApp {
             this.ctx.fill();
         }
     }
-    
-    drawPath() {
-        if (this.pathPoints.length < 2) return;
-        
-        this.ctx.strokeStyle = '#e74c3c';
-        this.ctx.lineWidth = 2 / this.scale;
-        this.ctx.beginPath();
-        
-        for (let i = 0; i < this.pathPoints.length; i += 2) {
-            if (i + 1 < this.pathPoints.length) {
-                this.ctx.moveTo(this.pathPoints[i].x, this.pathPoints[i].y);
-                this.ctx.lineTo(this.pathPoints[i + 1].x, this.pathPoints[i + 1].y);
-            }
-        }
-        
-        this.ctx.stroke();
-        
-        // Draw path direction arrows
-        this.ctx.fillStyle = '#c0392b';
-        for (let i = 0; i < this.pathPoints.length; i += 2) {
-            if (i + 1 < this.pathPoints.length) {
-                const p1 = this.pathPoints[i];
-                const p2 = this.pathPoints[i + 1];
-                const midX = (p1.x + p2.x) / 2;
-                const midY = (p1.y + p2.y) / 2;
-                
-                // Draw small arrow
-                const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-                const arrowSize = 5 / this.scale;
-                
-                this.ctx.save();
-                this.ctx.translate(midX, midY);
-                this.ctx.rotate(angle);
-                this.ctx.beginPath();
-                this.ctx.moveTo(-arrowSize, -arrowSize/2);
-                this.ctx.lineTo(0, 0);
-                this.ctx.lineTo(-arrowSize, arrowSize/2);
-                this.ctx.stroke();
-                this.ctx.restore();
-            }
-        }
-    }
-    
-    drawDecomposition() {
-        if (this.decompositionPoints.length === 0) return;
-        
-        // Draw decomposition lines (connecting decomposition points)
-        if (this.decompositionPoints.length >= 2) {
-            this.ctx.strokeStyle = '#9b59b6'; // Purple color for decomposition
-            this.ctx.lineWidth = 2 / this.scale;
-            this.ctx.setLineDash([5 / this.scale, 5 / this.scale]); // Dashed line
-            this.ctx.beginPath();
             
-            this.ctx.moveTo(this.decompositionPoints[0].x, this.decompositionPoints[0].y);
-            for (let i = 1; i < this.decompositionPoints.length; i++) {
-                this.ctx.lineTo(this.decompositionPoints[i].x, this.decompositionPoints[i].y);
-            }
-            
-            // Close the decomposition if we have more than 2 points
-            if (this.decompositionPoints.length > 2) {
-                this.ctx.closePath();
-            }
-            
-            this.ctx.stroke();
-            this.ctx.setLineDash([]); // Reset line dash
-        }
-        
-        // Draw decomposition points
-        this.ctx.fillStyle = '#8e44ad'; // Darker purple for points
-        for (const point of this.decompositionPoints) {
-            this.ctx.beginPath();
-            this.ctx.arc(point.x, point.y, 6 / this.scale, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            // Add a white center
-            this.ctx.fillStyle = 'white';
-            this.ctx.beginPath();
-            this.ctx.arc(point.x, point.y, 2 / this.scale, 0, Math.PI * 2);
-            this.ctx.fill();
-            this.ctx.fillStyle = '#8e44ad';
-        }
-    }
-    
-    drawCalculatedPath() {
-        if (this.calculatedPathPoints.length < 2) return;
-        
-        this.ctx.strokeStyle = '#27ae60'; // Green color for calculated path
-        this.ctx.lineWidth = 3 / this.scale;
-        this.ctx.beginPath();
-        
-        // Draw path segments (assuming pairs of points like the local path)
-        for (let i = 0; i < this.calculatedPathPoints.length; i += 2) {
-            if (i + 1 < this.calculatedPathPoints.length) {
-                this.ctx.moveTo(this.calculatedPathPoints[i].x, this.calculatedPathPoints[i].y);
-                this.ctx.lineTo(this.calculatedPathPoints[i + 1].x, this.calculatedPathPoints[i + 1].y);
-            }
-        }
-        
-        this.ctx.stroke();
-        
-        // Draw calculated path direction arrows
-        this.ctx.fillStyle = '#1e8449'; // Darker green for arrows
-        this.ctx.strokeStyle = '#1e8449';
-        for (let i = 0; i < this.calculatedPathPoints.length; i += 2) {
-            if (i + 1 < this.calculatedPathPoints.length) {
-                const p1 = this.calculatedPathPoints[i];
-                const p2 = this.calculatedPathPoints[i + 1];
-                const midX = (p1.x + p2.x) / 2;
-                const midY = (p1.y + p2.y) / 2;
-                
-                // Draw arrow
-                const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-                const arrowSize = 6 / this.scale;
-                
-                this.ctx.save();
-                this.ctx.translate(midX, midY);
-                this.ctx.rotate(angle);
-                this.ctx.beginPath();
-                this.ctx.moveTo(-arrowSize, -arrowSize/2);
-                this.ctx.lineTo(0, 0);
-                this.ctx.lineTo(-arrowSize, arrowSize/2);
-                this.ctx.stroke();
-                this.ctx.restore();
-            }
-        }
-        
-        // Draw calculated path points
-        this.ctx.fillStyle = '#27ae60';
-        for (const point of this.calculatedPathPoints) {
-            this.ctx.beginPath();
-            this.ctx.arc(point.x, point.y, 3 / this.scale, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
-    }
-    
-    calculateArea() {
-        if (this.boundaryPoints.length < 3) return 0;
-        
-        let area = 0;
-        for (let i = 0; i < this.boundaryPoints.length; i++) {
-            const j = (i + 1) % this.boundaryPoints.length;
-            area += this.boundaryPoints[i].x * this.boundaryPoints[j].y;
-            area -= this.boundaryPoints[j].x * this.boundaryPoints[i].y;
-        }
-        // Convert from square pixels to square meters
-        const areaPixels = Math.abs(area) / 2;
-        return areaPixels / (this.pixelsPerMeter * this.pixelsPerMeter);
-    }
-    
-    calculatePathLength() {
-        let length = 0;
-        for (let i = 0; i < this.pathPoints.length; i += 2) {
-            if (i + 1 < this.pathPoints.length) {
-                const p1 = this.pathPoints[i];
-                const p2 = this.pathPoints[i + 1];
-                const dx = p2.x - p1.x;
-                const dy = p2.y - p1.y;
-                length += Math.sqrt(dx * dx + dy * dy);
-            }
-        }
-        // Convert from pixels to meters
-        return length / this.pixelsPerMeter;
-    }
-    
     updateDisplay() {     
         // Update boundary info
         document.getElementById('boundaryPoints').textContent = this.boundaryPoints.length;
-        document.getElementById('areaSize').textContent = this.calculateArea().toFixed(2);
-        document.getElementById('pathLength').textContent = this.calculatePathLength().toFixed(2);
-        
         document.getElementById('zoomLevel').textContent = Math.round(this.scale * 100) + '%';
     }
 }
