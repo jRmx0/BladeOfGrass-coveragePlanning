@@ -17,11 +17,13 @@ class ObstacleModel {
 class BoundaryModel {
     constructor() {
         this.boundaryPoints = [];
-        this.mowerWidth = 0.25;
+        this.pathWidth = 0.25;
         this.pathOverlap = 0.05;
+        this.id = `model-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
     clear() {
         this.boundaryPoints = [];
+        this.id = `model-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
 }
 
@@ -41,6 +43,7 @@ class CanvasManager {
         this.pixelsPerMeter = 100;
         this.isDrawingBoundary = false;
         this.isDrawingObstacle = false;
+        this.cells = [];
         this.setupCanvas();
     }
     setupCanvas() {
@@ -67,6 +70,7 @@ class CanvasManager {
         if (this.showGrid) this.drawGrid();
         if (this.boundaryModel.boundaryPoints.length > 0) this.drawBoundary();
         if (this.obstacleModel.obstacles.length > 0) this.drawObstacles();
+        if (this.cells.length > 0) this.drawCells();
         this.ctx.restore();
     }
 
@@ -78,9 +82,9 @@ class CanvasManager {
                 this.ctx.strokeStyle = '#e67e22';
                 this.ctx.lineWidth = 2 / this.scale;
                 this.ctx.beginPath();
-                this.ctx.moveTo(obstacle[0].x, obstacle[0].y);
+                this.ctx.moveTo(obstacle[0].x * this.pixelsPerMeter, obstacle[0].y * this.pixelsPerMeter);
                 for (let i = 1; i < obstacle.length; i++) {
-                    this.ctx.lineTo(obstacle[i].x, obstacle[i].y);
+                    this.ctx.lineTo(obstacle[i].x * this.pixelsPerMeter, obstacle[i].y * this.pixelsPerMeter);
                 }
                 if (obstacle.length > 2) {
                     this.ctx.closePath();
@@ -93,7 +97,7 @@ class CanvasManager {
             this.ctx.fillStyle = '#e67e22';
             for (const point of obstacle) {
                 this.ctx.beginPath();
-                this.ctx.arc(point.x, point.y, 3 / this.scale, 0, Math.PI * 2);
+                this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 3 / this.scale, 0, Math.PI * 2);
                 this.ctx.fill();
             }
         }
@@ -134,9 +138,9 @@ class CanvasManager {
             this.ctx.strokeStyle = '#3498db';
             this.ctx.lineWidth = 3 / this.scale;
             this.ctx.beginPath();
-            this.ctx.moveTo(points[0].x, points[0].y);
+            this.ctx.moveTo(points[0].x * this.pixelsPerMeter, points[0].y * this.pixelsPerMeter);
             for (let i = 1; i < points.length; i++) {
-                this.ctx.lineTo(points[i].x, points[i].y);
+                this.ctx.lineTo(points[i].x * this.pixelsPerMeter, points[i].y * this.pixelsPerMeter);
             }
             if (points.length > 2) {
                 this.ctx.closePath();
@@ -148,9 +152,24 @@ class CanvasManager {
         this.ctx.fillStyle = '#2980b9';
         for (const point of points) {
             this.ctx.beginPath();
-            this.ctx.arc(point.x, point.y, 4 / this.scale, 0, Math.PI * 2);
+            this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 4 / this.scale, 0, Math.PI * 2);
             this.ctx.fill();
         }
+    }
+    drawCells() {
+        this.ctx.strokeStyle = '#2ecc71';
+        this.ctx.lineWidth = 3 / this.scale;
+        this.ctx.setLineDash([5, 5]);
+        for (const cell of this.cells) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(cell[0].x * this.pixelsPerMeter, cell[0].y * this.pixelsPerMeter);
+            for (let i = 1; i < cell.length; i++) {
+                this.ctx.lineTo(cell[i].x * this.pixelsPerMeter, cell[i].y * this.pixelsPerMeter);
+            }
+            this.ctx.closePath();
+            this.ctx.stroke();
+        }
+        this.ctx.setLineDash([]);
     }
     resetView() {
         this.scale = 1;
@@ -183,9 +202,9 @@ class UIController {
         document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
         document.getElementById('resetView').addEventListener('click', () => this.canvasManager.resetView());
         document.getElementById('toggleGrid').addEventListener('click', () => this.canvasManager.toggleGrid());
-        document.getElementById('exportModel').addEventListener('click', () => this.exportModelToConsole());
-        document.getElementById('mowerWidth').addEventListener('change', (e) => {
-            this.boundaryModel.mowerWidth = parseFloat(e.target.value);
+        document.getElementById('exportData').addEventListener('click', () => this.exportData());
+        document.getElementById('pathWidth').addEventListener('change', (e) => {
+            this.boundaryModel.pathWidth = parseFloat(e.target.value);
             this.updateDisplay();
         });
         document.getElementById('pathOverlap').addEventListener('change', (e) => {
@@ -200,16 +219,40 @@ class UIController {
         this.canvasManager.canvas.addEventListener('dragstart', (e) => e.preventDefault());
         this.updateDisplay();
         this.canvasManager.draw();
+        document.getElementById('boustrophedonCellularDecomposition').addEventListener('click', () => this.runBoustrophedon());
     }
+
+    async sendDataToServer(endpoint, data) {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json();
+            console.log('Server response:', result);
+        } catch (error) {
+            console.error('Error sending data to server:', error);
+            alert('Error saving data.');
+        }
+    }
+
+    exportData() {
+        const data = this.getModelData();
+        this.sendDataToServer('/save-model', data);
+        // Also compute and save decomposition
+        const decomposition = new BoustrophedonDecomposition(data);
+        const decompositionResult = decomposition.decompose();
+        this.sendDataToServer('/save-decomposition', decompositionResult);
+    }
+
     exportModelToConsole() {
-        const data = {
-            mowerWidth: this.boundaryModel.mowerWidth,
-            pathOverlap: this.boundaryModel.pathOverlap,
-            boundaryCount: this.boundaryModel.boundaryPoints.length,
-            boundaryPoints: this.boundaryModel.boundaryPoints,
-            obstaclesCount: this.obstacleModel.obstacles.length,
-            obstacles: this.obstacleModel.obstacles
-        };
+        const data = this.getModelData();
         console.log(JSON.stringify(data, null, 2));
     }
     toggleDrawingMode(mode) {
@@ -281,8 +324,8 @@ class UIController {
         const rect = this.canvasManager.canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
-        const worldX = (mouseX - this.canvasManager.offsetX) / this.canvasManager.scale;
-        const worldY = (mouseY - this.canvasManager.offsetY) / this.canvasManager.scale;
+        const worldX = parseFloat(((mouseX - this.canvasManager.offsetX) / this.canvasManager.scale / this.canvasManager.pixelsPerMeter).toFixed(2));
+        const worldY = parseFloat(((mouseY - this.canvasManager.offsetY) / this.canvasManager.scale / this.canvasManager.pixelsPerMeter).toFixed(2));
         if (this.isDrawingBoundary) {
             this.boundaryModel.boundaryPoints.push({ x: worldX, y: worldY });
             this.updateDisplay();
@@ -340,6 +383,23 @@ class UIController {
         document.getElementById('boundaryPoints').textContent = this.boundaryModel.boundaryPoints.length;
         document.getElementById('zoomLevel').textContent = Math.round(this.canvasManager.scale * 100) + '%';
     }
+    runBoustrophedon() {
+        const model = this.getModelData();
+        const decomposition = new BoustrophedonDecomposition(model);
+        const decompositionResult = decomposition.decompose();
+        this.canvasManager.cells = decompositionResult.cells;
+        this.canvasManager.draw();
+    }
+
+    getModelData() {
+        return {
+            id: this.boundaryModel.id,
+            pathWidth: this.boundaryModel.pathWidth,
+            pathOverlap: this.boundaryModel.pathOverlap,
+            boundaryPoints: this.boundaryModel.boundaryPoints,
+            obstacles: this.obstacleModel.obstacles
+        };
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -348,4 +408,5 @@ document.addEventListener('DOMContentLoaded', () => {
     const obstacleModel = new ObstacleModel();
     const canvasManager = new CanvasManager(canvas, boundaryModel, obstacleModel);
     new UIController(boundaryModel, obstacleModel, canvasManager);
+    new TestingController(boundaryModel, obstacleModel, canvasManager);
 });

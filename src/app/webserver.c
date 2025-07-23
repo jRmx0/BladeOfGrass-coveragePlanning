@@ -34,7 +34,15 @@ void webserver_event_handler(struct mg_connection *c, int ev, void *ev_data)
             case ROUTE_PATH_SCRIPT:
                 handle_path_script_route(c, hm);
                 break;
-                
+                            
+            case ROUTE_PATH_BOUSTROPHEDON_SCRIPT:
+                handle_path_boustrophedon_script_route(c, hm);
+                break;
+            
+            case ROUTE_PATH_TESTING_SCRIPT:
+                handle_path_testing_script_route(c, hm);
+                break;
+
             case ROUTE_PATH_CALCULATE:
                 handle_path_calculate_route(c, hm);
                 break;
@@ -53,6 +61,14 @@ void webserver_event_handler(struct mg_connection *c, int ev, void *ev_data)
                 
             case ROUTE_SCRIPT:
                 handle_script_route(c, hm);
+                break;
+            
+            case ROUTE_SAVE_MODEL:
+                handle_save_model_route(c, hm);
+                break;
+
+            case ROUTE_SAVE_DECOMPOSITION:
+                handle_save_decomposition_route(c, hm);
                 break;
                 
             case ROUTE_UNKNOWN:
@@ -86,6 +102,18 @@ void handle_path_script_route(struct mg_connection *c, struct mg_http_message *h
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
     mg_http_serve_file(c, hm, "../../web/path_canvas/path-script.js", &opts);
+}
+
+void handle_path_boustrophedon_script_route(struct mg_connection *c, struct mg_http_message *hm)
+{
+    struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
+    mg_http_serve_file(c, hm, "../../web/path_canvas/boustrophedon.js", &opts);
+}
+
+void handle_path_testing_script_route(struct mg_connection *c, struct mg_http_message *hm)
+{
+    struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
+    mg_http_serve_file(c, hm, "../../web/path_canvas/testing.js", &opts);
 }
 
 void handle_path_calculate_route(struct mg_connection *c, struct mg_http_message *hm)
@@ -138,6 +166,89 @@ void handle_script_route(struct mg_connection *c, struct mg_http_message *hm)
 }
 
 
+void handle_save_model_route(struct mg_connection *c, struct mg_http_message *hm) {
+    char *body_str = malloc(hm->body.len + 1);
+    memcpy(body_str, hm->body.buf, hm->body.len);
+    body_str[hm->body.len] = '\0';
+
+    cJSON *json = cJSON_Parse(body_str);
+    if (json == NULL) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n", "{\"error\":\"Invalid JSON\"}");
+        free(body_str);
+        return;
+    }
+
+    const cJSON *id_json = cJSON_GetObjectItemCaseSensitive(json, "id");
+    if (!cJSON_IsString(id_json) || (id_json->valuestring == NULL)) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n", "{\"error\":\"Missing or invalid model ID\"}");
+        cJSON_Delete(json);
+        free(body_str);
+        return;
+    }
+
+    char filename[256];
+    snprintf(filename, sizeof(filename), "../../../temp/env_in/%s.json", id_json->valuestring);
+
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Could not open file for writing\"}");
+        cJSON_Delete(json);
+        free(body_str);
+        return;
+    }
+
+    char *json_str = cJSON_Print(json);
+    fprintf(file, "%s", json_str);
+    fclose(file);
+
+    mg_http_reply(c, 200, "Content-Type: application/json\r\n", "{\"status\":\"success\"}");
+    cJSON_Delete(json);
+    free(body_str);
+    free(json_str);
+}
+
+void handle_save_decomposition_route(struct mg_connection *c, struct mg_http_message *hm) {
+    char *body_str = malloc(hm->body.len + 1);
+    memcpy(body_str, hm->body.buf, hm->body.len);
+    body_str[hm->body.len] = '\0';
+
+    cJSON *json = cJSON_Parse(body_str);
+    if (json == NULL) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n", "{\"error\":\"Invalid JSON\"}");
+        free(body_str);
+        return;
+    }
+
+    const cJSON *id_json = cJSON_GetObjectItemCaseSensitive(json, "decompositionId");
+    if (!cJSON_IsString(id_json) || (id_json->valuestring == NULL)) {
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n", "{\"error\":\"Missing or invalid decomposition ID\"}");
+        cJSON_Delete(json);
+        free(body_str);
+        return;
+    }
+
+    char filename[256];
+    snprintf(filename, sizeof(filename), "../../../temp/dec_out/%s.json", id_json->valuestring);
+
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        mg_http_reply(c, 500, "Content-Type: application/json\r\n", "{\"error\":\"Could not open file for writing\"}");
+        cJSON_Delete(json);
+        free(body_str);
+        return;
+    }
+
+    char *json_str = cJSON_Print(json);
+    fprintf(file, "%s", json_str);
+    fclose(file);
+
+    mg_http_reply(c, 200, "Content-Type: application/json\r\n", "{\"status\":\"success\"}");
+    cJSON_Delete(json);
+    free(body_str);
+    free(json_str);
+}
+
+
 void handle_not_found(struct mg_connection *c, struct mg_http_message *hm)
 {
     mg_http_reply(c, 404, "Access-Control-Allow-Origin: *\r\n", "Not found");
@@ -172,6 +283,18 @@ route_type_t get_route_type(struct mg_str uri)
     }
     if (mg_strcmp(uri, mg_str("/path-calculate")) == 0) {
         return ROUTE_PATH_CALCULATE;
+    }
+    if (mg_strcmp(uri, mg_str("/boustrophedon.js")) == 0) {
+        return ROUTE_PATH_BOUSTROPHEDON_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/testing.js")) == 0) {
+        return ROUTE_PATH_TESTING_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/save-model")) == 0) {
+        return ROUTE_SAVE_MODEL;
+    }
+    if (mg_strcmp(uri, mg_str("/save-decomposition")) == 0) {
+        return ROUTE_SAVE_DECOMPOSITION;
     }
     return ROUTE_UNKNOWN;
 }
