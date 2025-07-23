@@ -206,28 +206,6 @@ input[type="number"]:focus {
     width: 100%;
 }
 
-/* Server status styling */
-#serverStatus {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.9em;
-}
-
-#serverStatus:contains("Connected") {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-#serverStatus:contains("Error") {
-    background-color: #f8d7da;
-    color: #721c24;
-}
-
-#serverStatus:contains("Not connected") {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
 /* Responsive Design */
 @media (max-width: 1200px) {
     .container {
