@@ -17,3 +17,7 @@ build-and-run: compile run
 
 clean:
 	@cd src/app && make clean
+	@if exist temp\dec_out rmdir /S /Q temp\dec_out
+	@if exist temp\env_in rmdir /S /Q temp\env_in
+	@mkdir temp\dec_out
+	@mkdir temp\env_in
