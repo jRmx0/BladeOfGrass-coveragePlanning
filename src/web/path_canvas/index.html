@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Robot Mower Path Planning Test</title>
-    <link rel="stylesheet" href="path-styles.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
@@ -65,12 +65,16 @@
         </div>
     </div>
 
-    <script src="BoundaryModel.js"></script>
-    <script src="ObstacleModel.js"></script>
-    <script src="CanvasManager.js"></script>
-    <script src="UIController.js"></script>
-    <script src="boustrophedon.js"></script>
-    <script src="testing.js"></script>
-    <script src="path-script.js"></script>
+    <script src="models/BoundaryModel.js"></script>
+    <script src="models/ObstacleModel.js"></script>
+    <script src="ui/CanvasManager.js"></script>
+    <script src="services/DataService.js"></script>
+    <script src="ui/UIStateManager.js"></script>
+    <script src="services/CoordinateTransformer.js"></script>
+    <script src="services/AlgorithmService.js"></script>
+    <script src="ui/UIController.js"></script>
+    <script src="algorithms/boustrophedon.js"></script>
+    <script src="utils/testing.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

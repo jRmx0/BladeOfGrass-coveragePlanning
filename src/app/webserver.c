@@ -31,8 +31,8 @@ void webserver_event_handler(struct mg_connection *c, int ev, void *ev_data)
                 handle_path_styles_route(c, hm);
                 break;
                 
-            case ROUTE_PATH_SCRIPT:
-                handle_path_script_route(c, hm);
+            case ROUTE_PATH_APP_SCRIPT:
+                handle_path_app_script_route(c, hm);
                 break;
 
             case ROUTE_PATH_BOUNDARY_MODEL_SCRIPT:
@@ -49,6 +49,22 @@ void webserver_event_handler(struct mg_connection *c, int ev, void *ev_data)
 
             case ROUTE_PATH_UI_CONTROLLER_SCRIPT:
                 handle_path_ui_controller_script_route(c, hm);
+                break;
+
+            case ROUTE_PATH_DATA_SERVICE_SCRIPT:
+                handle_path_data_service_script_route(c, hm);
+                break;
+
+            case ROUTE_PATH_UI_STATE_MANAGER_SCRIPT:
+                handle_path_ui_state_manager_script_route(c, hm);
+                break;
+
+            case ROUTE_PATH_COORDINATE_TRANSFORMER_SCRIPT:
+                handle_path_coordinate_transformer_script_route(c, hm);
+                break;
+
+            case ROUTE_PATH_ALGORITHM_SERVICE_SCRIPT:
+                handle_path_algorithm_service_script_route(c, hm);
                 break;
                             
             case ROUTE_PATH_BOUSTROPHEDON_SCRIPT:
@@ -99,61 +115,91 @@ void webserver_event_handler(struct mg_connection *c, int ev, void *ev_data)
 void handle_path_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/path-index.html", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/index.html", &opts);
 }
 
 void handle_path_index_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/path-index.html", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/index.html", &opts);
 }
 
 void handle_path_styles_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/path-styles.css", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/styles.css", &opts);
 }
 
 void handle_path_script_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/path-script.js", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/app.js", &opts);
+}
+
+void handle_path_app_script_route(struct mg_connection *c, struct mg_http_message *hm)
+{
+    struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
+    mg_http_serve_file(c, hm, "../../web/path_canvas/app.js", &opts);
 }
 
 void handle_path_boundary_model_script_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/BoundaryModel.js", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/models/BoundaryModel.js", &opts);
 }
 
 void handle_path_obstacle_model_script_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/ObstacleModel.js", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/models/ObstacleModel.js", &opts);
 }
 
 void handle_path_canvas_manager_script_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/CanvasManager.js", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/ui/CanvasManager.js", &opts);
 }
 
 void handle_path_ui_controller_script_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/UIController.js", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/ui/UIController.js", &opts);
+}
+
+void handle_path_data_service_script_route(struct mg_connection *c, struct mg_http_message *hm)
+{
+    struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
+    mg_http_serve_file(c, hm, "../../web/path_canvas/services/DataService.js", &opts);
+}
+
+void handle_path_ui_state_manager_script_route(struct mg_connection *c, struct mg_http_message *hm)
+{
+    struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
+    mg_http_serve_file(c, hm, "../../web/path_canvas/ui/UIStateManager.js", &opts);
+}
+
+void handle_path_coordinate_transformer_script_route(struct mg_connection *c, struct mg_http_message *hm)
+{
+    struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
+    mg_http_serve_file(c, hm, "../../web/path_canvas/services/CoordinateTransformer.js", &opts);
+}
+
+void handle_path_algorithm_service_script_route(struct mg_connection *c, struct mg_http_message *hm)
+{
+    struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
+    mg_http_serve_file(c, hm, "../../web/path_canvas/services/AlgorithmService.js", &opts);
 }
 
 void handle_path_boustrophedon_script_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/boustrophedon.js", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/algorithms/boustrophedon.js", &opts);
 }
 
 void handle_path_testing_script_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/testing.js", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/utils/testing.js", &opts);
 }
 
 void handle_path_calculate_route(struct mg_connection *c, struct mg_http_message *hm)
@@ -318,20 +364,50 @@ route_type_t get_route_type(struct mg_str uri)
     if (mg_strcmp(uri, mg_str("/path-styles.css")) == 0) {
         return ROUTE_PATH_STYLES;
     }
+    if (mg_strcmp(uri, mg_str("/styles.css")) == 0) {
+        return ROUTE_PATH_STYLES;
+    }
     if (mg_strcmp(uri, mg_str("/path-script.js")) == 0) {
-        return ROUTE_PATH_SCRIPT;
+        return ROUTE_PATH_APP_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/app.js")) == 0) {
+        return ROUTE_PATH_APP_SCRIPT;
     }
     if (mg_strcmp(uri, mg_str("/BoundaryModel.js")) == 0) {
+        return ROUTE_PATH_BOUNDARY_MODEL_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/models/BoundaryModel.js")) == 0) {
         return ROUTE_PATH_BOUNDARY_MODEL_SCRIPT;
     }
     if (mg_strcmp(uri, mg_str("/ObstacleModel.js")) == 0) {
         return ROUTE_PATH_OBSTACLE_MODEL_SCRIPT;
     }
+    if (mg_strcmp(uri, mg_str("/models/ObstacleModel.js")) == 0) {
+        return ROUTE_PATH_OBSTACLE_MODEL_SCRIPT;
+    }
     if (mg_strcmp(uri, mg_str("/CanvasManager.js")) == 0) {
+        return ROUTE_PATH_CANVAS_MANAGER_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/ui/CanvasManager.js")) == 0) {
         return ROUTE_PATH_CANVAS_MANAGER_SCRIPT;
     }
     if (mg_strcmp(uri, mg_str("/UIController.js")) == 0) {
         return ROUTE_PATH_UI_CONTROLLER_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/ui/UIController.js")) == 0) {
+        return ROUTE_PATH_UI_CONTROLLER_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/services/DataService.js")) == 0) {
+        return ROUTE_PATH_DATA_SERVICE_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/ui/UIStateManager.js")) == 0) {
+        return ROUTE_PATH_UI_STATE_MANAGER_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/services/CoordinateTransformer.js")) == 0) {
+        return ROUTE_PATH_COORDINATE_TRANSFORMER_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/services/AlgorithmService.js")) == 0) {
+        return ROUTE_PATH_ALGORITHM_SERVICE_SCRIPT;
     }
     if (mg_strcmp(uri, mg_str("/path-calculate")) == 0) {
         return ROUTE_PATH_CALCULATE;
@@ -339,7 +415,13 @@ route_type_t get_route_type(struct mg_str uri)
     if (mg_strcmp(uri, mg_str("/boustrophedon.js")) == 0) {
         return ROUTE_PATH_BOUSTROPHEDON_SCRIPT;
     }
+    if (mg_strcmp(uri, mg_str("/algorithms/boustrophedon.js")) == 0) {
+        return ROUTE_PATH_BOUSTROPHEDON_SCRIPT;
+    }
     if (mg_strcmp(uri, mg_str("/testing.js")) == 0) {
+        return ROUTE_PATH_TESTING_SCRIPT;
+    }
+    if (mg_strcmp(uri, mg_str("/utils/testing.js")) == 0) {
         return ROUTE_PATH_TESTING_SCRIPT;
     }
     if (mg_strcmp(uri, mg_str("/save-model")) == 0) {
