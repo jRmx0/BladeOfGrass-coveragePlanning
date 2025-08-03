@@ -8,6 +8,10 @@ typedef enum {
     ROUTE_PATH_INDEX,
     ROUTE_PATH_STYLES,
     ROUTE_PATH_SCRIPT,
+    ROUTE_PATH_BOUNDARY_MODEL_SCRIPT,
+    ROUTE_PATH_OBSTACLE_MODEL_SCRIPT,
+    ROUTE_PATH_CANVAS_MANAGER_SCRIPT,
+    ROUTE_PATH_UI_CONTROLLER_SCRIPT,
     ROUTE_PATH_BOUSTROPHEDON_SCRIPT,
     ROUTE_PATH_TESTING_SCRIPT,
     ROUTE_PATH_CALCULATE,
@@ -27,6 +31,10 @@ void handle_path_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_index_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_styles_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_script_route(struct mg_connection *c, struct mg_http_message *hm);
+void handle_path_boundary_model_script_route(struct mg_connection *c, struct mg_http_message *hm);
+void handle_path_obstacle_model_script_route(struct mg_connection *c, struct mg_http_message *hm);
+void handle_path_canvas_manager_script_route(struct mg_connection *c, struct mg_http_message *hm);
+void handle_path_ui_controller_script_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_boustrophedon_script_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_testing_script_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_calculate_route(struct mg_connection *c, struct mg_http_message *hm);

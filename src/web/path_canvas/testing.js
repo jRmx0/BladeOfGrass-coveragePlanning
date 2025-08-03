@@ -10,13 +10,18 @@ class TestingController {
         document.getElementById('drawRectangle').addEventListener('click', () => this.drawRectangle());
     }
 
+    // rectangle boundary with diamond obstacle in the middle
     drawRectangle() {
         this.boundaryModel.clear();
         this.obstacleModel.clear();
-        this.boundaryModel.boundaryPoints.push({ x: -3, y: -2 });
-        this.boundaryModel.boundaryPoints.push({ x: 3, y: -2 });
-        this.boundaryModel.boundaryPoints.push({ x: 3, y: 2 });
-        this.boundaryModel.boundaryPoints.push({ x: -3, y: 2 });
+        
+        const rectanglePoints = [
+            { x: -3, y: -2 },
+            { x: 3, y: -2 },
+            { x: 3, y: 2 },
+            { x: -3, y: 2 }
+        ];
+        rectanglePoints.forEach(point => this.boundaryModel.boundaryPoints.push(point));
 
         this.obstacleModel.startNewObstacle();
         this.obstacleModel.addPointToCurrentObstacle({ x: 0, y: -1 });
