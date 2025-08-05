@@ -100,4 +100,86 @@ class UIStateManager {
             coordsElement.textContent = `Mouse: (${worldXMeters}, ${worldYMeters}) m`;
         }
     }
+
+    updateCellInfo(cellCount, coverageArea = 0) {
+        const cellCountElement = document.getElementById('cellCount');
+        const coverageAreaElement = document.getElementById('coverageArea');
+        
+        if (cellCountElement) {
+            cellCountElement.textContent = cellCount;
+        }
+        
+        if (coverageAreaElement) {
+            coverageAreaElement.textContent = `${coverageArea.toFixed(2)} m²`;
+        }
+    }
+
+    updateObstacleCount(obstacleCount) {
+        const element = document.getElementById('obstacleCount');
+        if (element) {
+            element.textContent = obstacleCount;
+        }
+    }
+
+    setAlgorithmStatus(status, show = true) {
+        const statusContainer = document.getElementById('algorithmStatus');
+        const statusText = document.getElementById('algorithmStatusText');
+        
+        if (statusContainer) {
+            statusContainer.style.display = show ? 'flex' : 'none';
+        }
+        
+        if (statusText) {
+            statusText.textContent = status;
+        }
+    }
+
+    setButtonState(buttonId, state) {
+        const button = document.getElementById(buttonId);
+        if (!button) return;
+        
+        // Remove all state classes
+        button.classList.remove('loading', 'success', 'secondary', 'active');
+        
+        switch (state) {
+            case 'loading':
+                button.classList.add('loading');
+                button.disabled = true;
+                break;
+            case 'success':
+                button.classList.add('success');
+                button.disabled = false;
+                setTimeout(() => {
+                    button.classList.remove('success');
+                }, 2000);
+                break;
+            case 'secondary':
+                button.classList.add('secondary');
+                button.disabled = false;
+                break;
+            case 'active':
+                button.classList.add('active');
+                button.disabled = false;
+                break;
+            default:
+                button.disabled = false;
+        }
+    }
+
+    updateClearCellsButton(hasCells) {
+        const button = document.getElementById('clearCells');
+        if (!button) return;
+        
+        if (hasCells) {
+            // Remove secondary class and make it blue/active when cells exist
+            button.classList.remove('secondary');
+            button.classList.add('active');
+            button.disabled = false;
+        } else {
+            // Keep it as secondary (gray) when no cells exist
+            button.classList.remove('active');
+            button.classList.add('secondary');
+            button.disabled = true;
+        }
+    }
 }

@@ -11,6 +11,8 @@ class CanvasManager {
         this.lastMouseY = 0;
         this.isDragging = false;
         this.showGrid = true;
+        this.showCells = true;
+        this.showCellNumbers = true;
         this.pixelsPerMeter = 100;
         this.isDrawingBoundary = false;
         this.isDrawingObstacle = false;
@@ -41,7 +43,7 @@ class CanvasManager {
         if (this.showGrid) this.drawGrid();
         if (this.boundaryModel.boundaryPoints.length > 0) this.drawBoundary();
         if (this.obstacleModel.obstacles.length > 0) this.drawObstacles();
-        if (this.cells.length > 0) this.drawCells();
+        if (this.cells.length > 0 && this.showCells) this.drawCells();
         this.ctx.restore();
     }
 
@@ -129,18 +131,81 @@ class CanvasManager {
     }
     drawCells() {
         this.ctx.strokeStyle = '#2ecc71';
-        this.ctx.lineWidth = 3 / this.scale;
-        this.ctx.setLineDash([5, 5]);
-        for (const cell of this.cells) {
+        this.ctx.lineWidth = 2 / this.scale;
+        this.ctx.setLineDash([8, 4]);
+        
+        // Add subtle fill for better visibility
+        this.ctx.fillStyle = 'rgba(46, 204, 113, 0.08)';
+        
+        for (let cellIndex = 0; cellIndex < this.cells.length; cellIndex++) {
+            const cell = this.cells[cellIndex];
+            
+            // Draw cell polygon
             this.ctx.beginPath();
             this.ctx.moveTo(cell[0].x * this.pixelsPerMeter, cell[0].y * this.pixelsPerMeter);
             for (let i = 1; i < cell.length; i++) {
                 this.ctx.lineTo(cell[i].x * this.pixelsPerMeter, cell[i].y * this.pixelsPerMeter);
             }
             this.ctx.closePath();
+            this.ctx.fill();
             this.ctx.stroke();
+            
+            // Calculate cell center (centroid) and draw number if enabled
+            if (this.showCellNumbers) {
+                const center = this.calculateCellCenter(cell);
+                this.drawCellNumber(center.x, center.y, cellIndex + 1);
+            }
         }
         this.ctx.setLineDash([]);
+    }
+    
+    calculateCellCenter(cell) {
+        let sumX = 0;
+        let sumY = 0;
+        for (const point of cell) {
+            sumX += point.x;
+            sumY += point.y;
+        }
+        return {
+            x: (sumX / cell.length) * this.pixelsPerMeter,
+            y: (sumY / cell.length) * this.pixelsPerMeter
+        };
+    }
+    
+    drawCellNumber(x, y, number) {
+        // Save context
+        this.ctx.save();
+        
+        // Set font properties (scale with zoom)
+        const fontSize = Math.max(12, 16 / this.scale);
+        this.ctx.font = `bold ${fontSize}px Arial`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        // Draw background circle for better visibility
+        const text = number.toString();
+        const textMetrics = this.ctx.measureText(text);
+        const padding = 4 / this.scale;
+        const radius = Math.max(textMetrics.width / 2 + padding, fontSize / 2 + padding);
+        
+        // Background circle
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Border for the circle
+        this.ctx.strokeStyle = '#2ecc71';
+        this.ctx.lineWidth = 1.5 / this.scale;
+        this.ctx.setLineDash([]);
+        this.ctx.stroke();
+        
+        // Draw number text
+        this.ctx.fillStyle = '#2c3e50';
+        this.ctx.fillText(text, x, y);
+        
+        // Restore context
+        this.ctx.restore();
     }
     resetView() {
         this.scale = 1;
@@ -150,6 +215,14 @@ class CanvasManager {
     }
     toggleGrid() {
         this.showGrid = !this.showGrid;
+        this.draw();
+    }
+    toggleCells() {
+        this.showCells = !this.showCells;
+        this.draw();
+    }
+    clearCellsOnly() {
+        this.cells = [];
         this.draw();
     }
 }

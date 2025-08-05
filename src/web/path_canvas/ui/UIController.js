@@ -22,8 +22,11 @@ class UIController {
             obstacleBtn.addEventListener('click', () => this.toggleDrawingMode('obstacle'));
         }
         document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
+        document.getElementById('clearCells').addEventListener('click', () => this.clearCellsOnly());
         document.getElementById('resetView').addEventListener('click', () => this.canvasManager.resetView());
         document.getElementById('toggleGrid').addEventListener('click', () => this.canvasManager.toggleGrid());
+        document.getElementById('showCells').addEventListener('change', (e) => this.toggleCellVisibility(e.target.checked));
+        document.getElementById('showCellNumbers').addEventListener('change', (e) => this.toggleCellNumbers(e.target.checked));
         document.getElementById('exportData').addEventListener('click', () => this.exportData());
         document.getElementById('pathWidth').addEventListener('change', (e) => {
             this.boundaryModel.pathWidth = parseFloat(e.target.value);
@@ -42,6 +45,13 @@ class UIController {
         this.updateDisplay();
         this.canvasManager.draw();
         document.getElementById('boustrophedonCellularDecomposition').addEventListener('click', () => this.runBoustrophedon());
+        
+        // Initialize checkbox state
+        document.getElementById('showCells').checked = this.canvasManager.showCells;
+        document.getElementById('showCellNumbers').checked = this.canvasManager.showCellNumbers;
+        
+        // Initialize clear cells button state
+        this.uiStateManager.updateClearCellsButton(this.canvasManager.cells.length > 0);
     }
 
     async exportData() {
@@ -82,6 +92,7 @@ class UIController {
     clearCanvas() {
         this.boundaryModel.clear();
         this.obstacleModel.clear();
+        this.canvasManager.cells = [];
         this.isDrawingBoundary = false;
         this.isDrawingObstacle = false;
         this.canvasManager.isDrawingBoundary = false;
@@ -93,6 +104,29 @@ class UIController {
         
         this.updateDisplay();
         this.canvasManager.draw();
+    }
+
+    clearCellsOnly() {
+        this.canvasManager.clearCellsOnly();
+        this.updateDisplay();
+    }
+
+    toggleCellVisibility(show) {
+        this.canvasManager.showCells = show;
+        this.canvasManager.draw();
+    }
+
+    toggleCellNumbers(show) {
+        this.canvasManager.showCellNumbers = show;
+        this.canvasManager.draw();
+    }
+
+    calculateCoverageArea() {
+        // Simple approximation based on cell count and average cell size
+        // This could be improved with actual polygon area calculation
+        const cellCount = this.canvasManager.cells.length;
+        const estimatedAreaPerCell = 1.5; // m² per cell (rough estimate)
+        return cellCount * estimatedAreaPerCell;
     }
     handleMouseDown(e) {
         const mousePos = this.coordinateTransformer.getMousePositionFromEvent(e);
@@ -163,17 +197,71 @@ class UIController {
             this.boundaryModel.boundaryPoints.length, 
             this.canvasManager.scale
         );
+        
+        // Update cell information
+        const cellCount = this.canvasManager.cells.length;
+        const coverageArea = this.calculateCoverageArea();
+        this.uiStateManager.updateCellInfo(cellCount, coverageArea);
+        
+        // Update clear cells button state based on whether cells exist
+        this.uiStateManager.updateClearCellsButton(cellCount > 0);
+        
+        // Update obstacle count
+        const obstacleCount = this.obstacleModel.obstacles.filter(obs => obs.length > 0).length;
+        this.uiStateManager.updateObstacleCount(obstacleCount);
     }
     
     runBoustrophedon() {
+        // Validate that we have boundary points
+        if (this.boundaryModel.boundaryPoints.length < 3) {
+            alert('Please draw a boundary with at least 3 points before generating path cells.');
+            return;
+        }
+
         try {
-            this.algorithmService.processAndVisualizeBoustrophedon(
-                this.boundaryModel, 
-                this.obstacleModel, 
-                this.canvasManager
-            );
+            // Set loading state
+            this.uiStateManager.setButtonState('boustrophedonCellularDecomposition', 'loading');
+            this.uiStateManager.setAlgorithmStatus('Generating path cells...', true);
+            
+            // Use setTimeout to allow UI to update before running algorithm
+            setTimeout(() => {
+                try {
+                    this.algorithmService.processAndVisualizeBoustrophedon(
+                        this.boundaryModel, 
+                        this.obstacleModel, 
+                        this.canvasManager
+                    );
+                    
+                    // Success state
+                    this.uiStateManager.setButtonState('boustrophedonCellularDecomposition', 'success');
+                    this.uiStateManager.setAlgorithmStatus(`Generated ${this.canvasManager.cells.length} path cells`, true);
+                    
+                    // Update display with new cell information
+                    this.updateDisplay();
+                    
+                    // Hide status after 3 seconds
+                    setTimeout(() => {
+                        this.uiStateManager.setAlgorithmStatus('', false);
+                    }, 3000);
+                    
+                } catch (error) {
+                    console.error('Boustrophedon algorithm failed:', error);
+                    this.uiStateManager.setButtonState('boustrophedonCellularDecomposition', 'normal');
+                    this.uiStateManager.setAlgorithmStatus('Error: Failed to generate path cells', true);
+                    alert('Failed to generate path cells. Please check your boundary and try again.');
+                    
+                    // Hide error status after 5 seconds
+                    setTimeout(() => {
+                        this.uiStateManager.setAlgorithmStatus('', false);
+                    }, 5000);
+                }
+            }, 100);
+            
         } catch (error) {
             console.error('Boustrophedon algorithm failed:', error);
+            this.uiStateManager.setButtonState('boustrophedonCellularDecomposition', 'normal');
+            this.uiStateManager.setAlgorithmStatus('Error: Failed to generate path cells', true);
+            alert('Failed to generate path cells. Please check your boundary and try again.');
         }
     }
 

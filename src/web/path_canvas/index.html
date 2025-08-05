@@ -19,8 +19,17 @@
                 <button id="exportData" class="control-btn">Export Data</button>
             </div>
             <div class="controls-group">
-                <h3>Algorithm Controls</h3>
-                <button id="boustrophedonCellularDecomposition" class="control-btn">The Boustrophedon Cellular Decomposition</button>
+                <h3>Path Planning</h3>
+                <button id="boustrophedonCellularDecomposition" class="control-btn">Generate Path Cells</button>
+                <button id="clearCells" class="control-btn secondary" disabled>Clear Cells Only</button>
+                <div class="checkbox-control">
+                    <input type="checkbox" id="showCells" checked>
+                    <label for="showCells">Show Path Cells</label>
+                </div>
+                <div class="checkbox-control">
+                    <input type="checkbox" id="showCellNumbers" checked>
+                    <label for="showCellNumbers">Show Cell Numbers</label>
+                </div>
             </div>
             <div class="controls-group">
                 <h3>Canvas Controls</h3>
@@ -29,7 +38,10 @@
             </div>
             <div class="controls-group">
                 <h3>Testing</h3>
-                <button id="drawRectangle" class="control-btn">Rectangle</button>
+                <div class="button-row">
+                    <button id="drawRectangle" class="control-btn">Rectangle</button>
+                    <button id="drawPredefinedCells" class="control-btn small">Cells</button>
+                </div>
             </div>
             <div class="controls-group">
                 <h3>Settings</h3>
@@ -60,6 +72,25 @@
                 <div class="data-item">
                     <label>Boundary Points:</label>
                     <span id="boundaryPoints">0</span>
+                </div>
+                <div class="data-item">
+                    <label>Obstacles:</label>
+                    <span id="obstacleCount">0</span>
+                </div>
+            </div>
+            <div class="data-group">
+                <h3>Path Planning</h3>
+                <div class="data-item">
+                    <label>Path Cells:</label>
+                    <span id="cellCount">0</span>
+                </div>
+                <div class="data-item">
+                    <label>Coverage Area:</label>
+                    <span id="coverageArea">0 m²</span>
+                </div>
+                <div class="data-item" id="algorithmStatus" style="display: none;">
+                    <label>Status:</label>
+                    <span id="algorithmStatusText">Ready</span>
                 </div>
             </div>
         </div>
