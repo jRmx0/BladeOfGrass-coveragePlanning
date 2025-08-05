@@ -39,9 +39,7 @@ class CanvasManager {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
         this.ctx.translate(this.offsetX, this.offsetY);
-        // Flip Y axis so positive Y goes up (north)
-        this.ctx.scale(this.scale, -this.scale);
-        this.ctx.translate(0, -this.canvas.height / this.scale);
+        this.ctx.scale(this.scale, this.scale);
         if (this.showGrid) this.drawGrid();
         if (this.boundaryModel.boundaryPoints.length > 0) this.drawBoundary();
         if (this.obstacleModel.obstacles.length > 0) this.drawObstacles();
@@ -293,11 +291,8 @@ class CanvasManager {
         this.ctx.stroke();
         
         // Draw number text (flip text back to readable orientation)
-        this.ctx.save();
-        this.ctx.scale(1, -1); // Flip text back to normal
         this.ctx.fillStyle = '#2c3e50';
-        this.ctx.fillText(text, x, -y); // Negate Y for flipped coordinate system
-        this.ctx.restore();
+        this.ctx.fillText(text, x, y); 
         
         // Restore context
         this.ctx.restore();
