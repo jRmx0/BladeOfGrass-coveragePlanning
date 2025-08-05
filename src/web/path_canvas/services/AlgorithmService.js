@@ -23,15 +23,27 @@ class AlgorithmService {
         }
     }
 
-    async exportModelAndDecomposition(boundaryModel, obstacleModel) {
+    async exportModelAndDecomposition(boundaryModel, obstacleModel, currentCells = null) {
         try {
             const modelData = this.createModelData(boundaryModel, obstacleModel);
             
             // Save model
             await this.dataService.saveModel(modelData);
             
-            // Compute and save decomposition
-            const decompositionResult = this.runBoustrophedonDecomposition(modelData);
+            // Use current cells if provided, otherwise compute decomposition
+            let decompositionResult;
+            if (currentCells && currentCells.length > 0) {
+                // Create decomposition result from current cells
+                decompositionResult = {
+                    id: "cells",
+                    modelId: modelData.id,
+                    cells: currentCells
+                };
+            } else {
+                // Compute decomposition if no current cells
+                decompositionResult = this.runBoustrophedonDecomposition(modelData);
+            }
+            
             await this.dataService.saveDecomposition(decompositionResult);
             
             return {

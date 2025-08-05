@@ -39,7 +39,9 @@ class CanvasManager {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
         this.ctx.translate(this.offsetX, this.offsetY);
-        this.ctx.scale(this.scale, this.scale);
+        // Flip Y axis so positive Y goes up (north)
+        this.ctx.scale(this.scale, -this.scale);
+        this.ctx.translate(0, -this.canvas.height / this.scale);
         if (this.showGrid) this.drawGrid();
         if (this.boundaryModel.boundaryPoints.length > 0) this.drawBoundary();
         if (this.obstacleModel.obstacles.length > 0) this.drawObstacles();
@@ -160,16 +162,106 @@ class CanvasManager {
     }
     
     calculateCellCenter(cell) {
-        let sumX = 0;
-        let sumY = 0;
-        for (const point of cell) {
-            sumX += point.x;
-            sumY += point.y;
+        // Find the point inside the polygon that is furthest from all edges
+        // This is better than centroid for label placement
+        return this.findOptimalLabelPosition(cell);
+    }
+    
+    findOptimalLabelPosition(polygon) {
+        // Find bounding box
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const point of polygon) {
+            minX = Math.min(minX, point.x);
+            minY = Math.min(minY, point.y);
+            maxX = Math.max(maxX, point.x);
+            maxY = Math.max(maxY, point.y);
         }
+        
+        // Grid-based approach to find the point with maximum distance to edges
+        const gridSize = 0.1; // 10cm resolution
+        let bestPoint = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+        let maxDistance = 0;
+        
+        // Sample points in a grid within the bounding box
+        for (let x = minX; x <= maxX; x += gridSize) {
+            for (let y = minY; y <= maxY; y += gridSize) {
+                const testPoint = { x, y };
+                
+                // Check if point is inside the polygon
+                if (this.isPointInPolygon(testPoint, polygon)) {
+                    // Calculate minimum distance to any edge
+                    const minDistToEdge = this.getMinDistanceToPolygonEdges(testPoint, polygon);
+                    
+                    if (minDistToEdge > maxDistance) {
+                        maxDistance = minDistToEdge;
+                        bestPoint = testPoint;
+                    }
+                }
+            }
+        }
+        
         return {
-            x: (sumX / cell.length) * this.pixelsPerMeter,
-            y: (sumY / cell.length) * this.pixelsPerMeter
+            x: bestPoint.x * this.pixelsPerMeter,
+            y: bestPoint.y * this.pixelsPerMeter
         };
+    }
+    
+    isPointInPolygon(point, polygon) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            if (((polygon[i].y > point.y) !== (polygon[j].y > point.y)) &&
+                (point.x < (polygon[j].x - polygon[i].x) * (point.y - polygon[i].y) / (polygon[j].y - polygon[i].y) + polygon[i].x)) {
+                inside = !inside;
+            }
+        }
+        return inside;
+    }
+    
+    getMinDistanceToPolygonEdges(point, polygon) {
+        let minDistance = Infinity;
+        
+        for (let i = 0; i < polygon.length; i++) {
+            const j = (i + 1) % polygon.length;
+            const edge = { start: polygon[i], end: polygon[j] };
+            const distance = this.getDistanceToLineSegment(point, edge);
+            minDistance = Math.min(minDistance, distance);
+        }
+        
+        return minDistance;
+    }
+    
+    getDistanceToLineSegment(point, edge) {
+        const { start, end } = edge;
+        const A = point.x - start.x;
+        const B = point.y - start.y;
+        const C = end.x - start.x;
+        const D = end.y - start.y;
+        
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        
+        if (lenSq === 0) {
+            // Start and end are the same point
+            return Math.sqrt(A * A + B * B);
+        }
+        
+        let param = dot / lenSq;
+        
+        let xx, yy;
+        if (param < 0) {
+            xx = start.x;
+            yy = start.y;
+        } else if (param > 1) {
+            xx = end.x;
+            yy = end.y;
+        } else {
+            xx = start.x + param * C;
+            yy = start.y + param * D;
+        }
+        
+        const dx = point.x - xx;
+        const dy = point.y - yy;
+        return Math.sqrt(dx * dx + dy * dy);
     }
     
     drawCellNumber(x, y, number) {
@@ -200,9 +292,12 @@ class CanvasManager {
         this.ctx.setLineDash([]);
         this.ctx.stroke();
         
-        // Draw number text
+        // Draw number text (flip text back to readable orientation)
+        this.ctx.save();
+        this.ctx.scale(1, -1); // Flip text back to normal
         this.ctx.fillStyle = '#2c3e50';
-        this.ctx.fillText(text, x, y);
+        this.ctx.fillText(text, x, -y); // Negate Y for flipped coordinate system
+        this.ctx.restore();
         
         // Restore context
         this.ctx.restore();

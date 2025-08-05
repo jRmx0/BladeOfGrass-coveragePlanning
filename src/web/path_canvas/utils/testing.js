@@ -50,33 +50,31 @@ class TestingController {
         
         // Define some sample cells for testing
         const predefinedCells = [
-            // Cell 1 - Rectangle on left
             [
-                { x: -2.5, y: -1.5 },
-                { x: -1, y: -1.5 },
-                { x: -1, y: 1.5 },
-                { x: -2.5, y: 1.5 }
+                { x: -3, y: -2 },
+                { x: -3, y: 2 },
+                { x: -1, y: 2 },
+                { x: -1, y: -2 }
             ],
-            // Cell 2 - Triangle in middle
             [
-                { x: -0.5, y: -1 },
-                { x: 0.5, y: -1 },
+                { x: -1, y: 0 },
+                { x: 0, y: -1 },
+                { x: 1, y: 0 },
+                { x: 1, y: -2 },
+                { x: -1, y: -2 }
+            ],
+            [
+                { x: -1, y: 0 },
+                { x: -1, y: 2 },
+                { x: 1, y: 2 },
+                { x: 1, y: 0 },
                 { x: 0, y: 1 }
             ],
-            // Cell 3 - Pentagon on right
             [
-                { x: 1, y: -1.2 },
-                { x: 2.2, y: -0.5 },
-                { x: 2.2, y: 0.5 },
-                { x: 1.6, y: 1.2 },
-                { x: 1, y: 0.8 }
-            ],
-            // Cell 4 - Small square
-            [
-                { x: -0.3, y: 0.2 },
-                { x: 0.3, y: 0.2 },
-                { x: 0.3, y: 0.8 },
-                { x: -0.3, y: 0.8 }
+                { x: 1, y: -2 },
+                { x: 1, y: 2 },
+                { x: 3, y: 2 },
+                { x: 3, y: -2 }
             ]
         ];
         

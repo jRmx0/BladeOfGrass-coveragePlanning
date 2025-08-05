@@ -2,6 +2,30 @@
 	"id":	"model",
 	"pathWidth":	0.25,
 	"pathOverlap":	0.05,
-	"boundaryPoints":	[],
-	"obstacles":	[]
+	"boundaryPoints":	[{
+			"x":	-3,
+			"y":	-2
+		}, {
+			"x":	3,
+			"y":	-2
+		}, {
+			"x":	3,
+			"y":	2
+		}, {
+			"x":	-3,
+			"y":	2
+		}],
+	"obstacles":	[[{
+				"x":	0,
+				"y":	-1
+			}, {
+				"x":	1,
+				"y":	0
+			}, {
+				"x":	0,
+				"y":	1
+			}, {
+				"x":	-1,
+				"y":	0
+			}]]
 }

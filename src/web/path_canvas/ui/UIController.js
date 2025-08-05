@@ -56,7 +56,12 @@ class UIController {
 
     async exportData() {
         try {
-            await this.algorithmService.exportModelAndDecomposition(this.boundaryModel, this.obstacleModel);
+            // Export model and current cells from canvas manager
+            await this.algorithmService.exportModelAndDecomposition(
+                this.boundaryModel, 
+                this.obstacleModel, 
+                this.canvasManager.cells
+            );
         } catch (error) {
             console.error('Export failed:', error);
         }
