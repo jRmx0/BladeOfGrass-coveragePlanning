@@ -273,7 +273,7 @@ void handle_save_model_route(struct mg_connection *c, struct mg_http_message *hm
     }
 
     char filename[256];
-    snprintf(filename, sizeof(filename), "../../../temp/env_in/%s.json", id_json->valuestring);
+    snprintf(filename, sizeof(filename), "../../web/path_canvas/state/%s.json", id_json->valuestring);
 
     FILE *file = fopen(filename, "w");
     if (file == NULL) {
@@ -287,7 +287,7 @@ void handle_save_model_route(struct mg_connection *c, struct mg_http_message *hm
     fprintf(file, "%s", json_str);
     fclose(file);
 
-    mg_http_reply(c, 200, "Content-Type: application/json\r\n", "{\"status\":\"success\"}");
+    mg_http_reply(c, 200, "Content-Type: application/json\r\n", "{\"action\":\"model file saved\", \"status\":\"success\"}");
     cJSON_Delete(json);
     free(body_str);
     free(json_str);
@@ -305,16 +305,16 @@ void handle_save_decomposition_route(struct mg_connection *c, struct mg_http_mes
         return;
     }
 
-    const cJSON *id_json = cJSON_GetObjectItemCaseSensitive(json, "decompositionId");
+    const cJSON *id_json = cJSON_GetObjectItemCaseSensitive(json, "id");
     if (!cJSON_IsString(id_json) || (id_json->valuestring == NULL)) {
-        mg_http_reply(c, 400, "Content-Type: application/json\r\n", "{\"error\":\"Missing or invalid decomposition ID\"}");
+        mg_http_reply(c, 400, "Content-Type: application/json\r\n", "{\"error\":\"Missing or invalid ID\"}");
         cJSON_Delete(json);
         free(body_str);
         return;
     }
 
     char filename[256];
-    snprintf(filename, sizeof(filename), "../../../temp/dec_out/%s.json", id_json->valuestring);
+    snprintf(filename, sizeof(filename), "../../web/path_canvas/state/%s.json", id_json->valuestring);
 
     FILE *file = fopen(filename, "w");
     if (file == NULL) {
@@ -328,7 +328,7 @@ void handle_save_decomposition_route(struct mg_connection *c, struct mg_http_mes
     fprintf(file, "%s", json_str);
     fclose(file);
 
-    mg_http_reply(c, 200, "Content-Type: application/json\r\n", "{\"status\":\"success\"}");
+    mg_http_reply(c, 200, "Content-Type: application/json\r\n", "{\"action\":\"cells file saved\", \"status\":\"success\"}");
     cJSON_Delete(json);
     free(body_str);
     free(json_str);

@@ -1,0 +1,7 @@
+{
+	"id":	"model",
+	"pathWidth":	0.25,
+	"pathOverlap":	0.05,
+	"boundaryPoints":	[],
+	"obstacles":	[]
+}

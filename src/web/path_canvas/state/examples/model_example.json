@@ -1,7 +1,7 @@
 {
+  "id":	"model_example",
   "pathWidth": 0.25,
   "pathOverlap": 0.05,
-  "boundaryCount": 3,
   "boundaryPoints": [
     {
       "x": -1.65,
@@ -16,7 +16,6 @@
       "y": 1.85
     }
   ],
-  "obstaclesCount": 2,
   "obstacles": [
     [
       {
