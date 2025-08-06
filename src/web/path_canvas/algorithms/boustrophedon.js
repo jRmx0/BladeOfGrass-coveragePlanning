@@ -10,24 +10,24 @@ class BoustrophedonDecomposition {
         // Mock implementation - returns simple vertical cells
         // This will be replaced with actual decomposition algorithm
         
-        const cells = [
-            [
-                { x: -1.0, y: -1 },  
-                { x: 0, y: -1 },  
-                { x: -1, y: 1 }
-            ],
-            [
-                { x: 0, y: -1 },  
-                { x: -1, y: 1 },
-                { x: -1, y: 2 },
-                { x: 0, y: 2 }
-            ]
-        ];
+        // const cells = [
+        //     [
+        //         { x: -1.0, y: -1 },  
+        //         { x: 0, y: -1 },  
+        //         { x: -1, y: 1 }
+        //     ],
+        //     [
+        //         { x: 0, y: -1 },  
+        //         { x: -1, y: 1 },
+        //         { x: -1, y: 2 },
+        //         { x: 0, y: 2 }
+        //     ]
+        // ];
 
-        return {
-            id: this.id,
-            modelId: this.modelId,
-            cells: cells
-        };
+        // return {
+        //     id: this.id,
+        //     modelId: this.modelId,
+        //     cells: cells
+        // };
     }
 }
