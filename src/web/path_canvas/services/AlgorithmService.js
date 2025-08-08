@@ -13,12 +13,12 @@ class AlgorithmService {
         };
     }
 
-    runBoustrophedonDecomposition(modelData) {
+    runCellularDecomposition(modelData) {
         try {
-            const decomposition = new BoustrophedonDecomposition(modelData);
+            const decomposition = new CellularDecomposition(modelData);
             return decomposition.decompose();
         } catch (error) {
-            console.error('Error running Boustrophedon decomposition:', error);
+            console.error('Error running cellular decomposition:', error);
             throw new Error('Failed to run path decomposition algorithm');
         }
     }
@@ -41,7 +41,7 @@ class AlgorithmService {
                 };
             } else {
                 // Compute decomposition if no current cells
-                decompositionResult = this.runBoustrophedonDecomposition(modelData);
+                decompositionResult = this.runCellularDecomposition(modelData);
             }
             
             await this.dataService.saveDecomposition(decompositionResult);
@@ -56,10 +56,10 @@ class AlgorithmService {
         }
     }
 
-    processAndVisualizeBoustrophedon(boundaryModel, obstacleModel, canvasManager) {
+    processAndVisualizeCellular(boundaryModel, obstacleModel, canvasManager) {
         try {
             const modelData = this.createModelData(boundaryModel, obstacleModel);
-            const decompositionResult = this.runBoustrophedonDecomposition(modelData);
+            const decompositionResult = this.runCellularDecomposition(modelData);
             
             // Update canvas with results
             canvasManager.cells = decompositionResult.cells;

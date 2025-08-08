@@ -67,8 +67,8 @@ void webserver_event_handler(struct mg_connection *c, int ev, void *ev_data)
                 handle_path_algorithm_service_script_route(c, hm);
                 break;
                             
-            case ROUTE_PATH_BOUSTROPHEDON_SCRIPT:
-                handle_path_boustrophedon_script_route(c, hm);
+            case ROUTE_PATH_CELLULAR_DECOMPOSITION_SCRIPT:
+                handle_path_cellular_decomposition_script_route(c, hm);
                 break;
             
             case ROUTE_PATH_TESTING_SCRIPT:
@@ -190,10 +190,10 @@ void handle_path_algorithm_service_script_route(struct mg_connection *c, struct 
     mg_http_serve_file(c, hm, "../../web/path_canvas/services/AlgorithmService.js", &opts);
 }
 
-void handle_path_boustrophedon_script_route(struct mg_connection *c, struct mg_http_message *hm)
+void handle_path_cellular_decomposition_script_route(struct mg_connection *c, struct mg_http_message *hm)
 {
     struct mg_http_serve_opts opts = {.root_dir = "../../web/path_canvas"};
-    mg_http_serve_file(c, hm, "../../web/path_canvas/algorithms/boustrophedon.js", &opts);
+    mg_http_serve_file(c, hm, "../../web/path_canvas/algorithms/CellularDecomposition.js", &opts);
 }
 
 void handle_path_testing_script_route(struct mg_connection *c, struct mg_http_message *hm)
@@ -412,11 +412,11 @@ route_type_t get_route_type(struct mg_str uri)
     if (mg_strcmp(uri, mg_str("/path-calculate")) == 0) {
         return ROUTE_PATH_CALCULATE;
     }
-    if (mg_strcmp(uri, mg_str("/boustrophedon.js")) == 0) {
-        return ROUTE_PATH_BOUSTROPHEDON_SCRIPT;
+    if (mg_strcmp(uri, mg_str("/CellularDecomposition.js")) == 0) {
+        return ROUTE_PATH_CELLULAR_DECOMPOSITION_SCRIPT;
     }
-    if (mg_strcmp(uri, mg_str("/algorithms/boustrophedon.js")) == 0) {
-        return ROUTE_PATH_BOUSTROPHEDON_SCRIPT;
+    if (mg_strcmp(uri, mg_str("/algorithms/CellularDecomposition.js")) == 0) {
+        return ROUTE_PATH_CELLULAR_DECOMPOSITION_SCRIPT;
     }
     if (mg_strcmp(uri, mg_str("/testing.js")) == 0) {
         return ROUTE_PATH_TESTING_SCRIPT;

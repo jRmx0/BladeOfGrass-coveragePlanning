@@ -16,7 +16,7 @@ typedef enum {
     ROUTE_PATH_UI_STATE_MANAGER_SCRIPT,
     ROUTE_PATH_COORDINATE_TRANSFORMER_SCRIPT,
     ROUTE_PATH_ALGORITHM_SERVICE_SCRIPT,
-    ROUTE_PATH_BOUSTROPHEDON_SCRIPT,
+    ROUTE_PATH_CELLULAR_DECOMPOSITION_SCRIPT,
     ROUTE_PATH_TESTING_SCRIPT,
     ROUTE_PATH_CALCULATE,
     ROUTE_SEND,
@@ -43,7 +43,7 @@ void handle_path_data_service_script_route(struct mg_connection *c, struct mg_ht
 void handle_path_ui_state_manager_script_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_coordinate_transformer_script_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_algorithm_service_script_route(struct mg_connection *c, struct mg_http_message *hm);
-void handle_path_boustrophedon_script_route(struct mg_connection *c, struct mg_http_message *hm);
+void handle_path_cellular_decomposition_script_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_testing_script_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_calculate_route(struct mg_connection *c, struct mg_http_message *hm);
 

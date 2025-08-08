@@ -54,7 +54,7 @@ make build-and-run  # Compiles C server and starts on port 8000
   - Rectangle button: Creates test boundary + obstacle (input for algorithm)
   - Cells button: Shows hardcoded expected cells (for comparing algorithm results)
 - **API Testing**: `/src/web/test/` contains JSON communication test suite
-- **Algorithm Development**: Focus is on `BoustrophedonDecomposition` implementation
+- **Algorithm Development**: Focus is on `CellularDecomposition` implementation
 
 ### Algorithm Development Focus
 Current priority: Implementing proper cell decomposition algorithm
@@ -78,14 +78,14 @@ Current priority: Implementing proper cell decomposition algorithm
 ### Path Planning Domain
 - **Boundary**: Closed polygon defining mowing area (e.g., 6m×4m rectangle)
 - **Obstacles**: Array of polygons to avoid (e.g., diamond-shaped obstacle)
-- **Cells**: Boustrophedon decomposition output - array of polygon cells that tile the boundary
+- **Cells**: Cellular decomposition output - array of polygon cells that tile the boundary
 - **Coverage**: Path width (0.25m) + overlap (0.05m) determine coverage requirements
 - **Example**: `model_example.json` → `cells.json` shows input→output transformation
 
 ## Development Philosophy
 
 ### Current Focus: Algorithm Implementation
-- **Primary Goal**: Working boustrophedon decomposition algorithm
+- **Primary Goal**: Working cellular decomposition algorithm
 - **Approach**: Simple, debuggable implementation over optimization
 - **Testing**: Visual comparison between algorithm output and expected cells
 - **C Backend**: Frozen - only add JS file endpoints if absolutely needed
@@ -112,7 +112,7 @@ Mouse events → World coordinates → Model updates → Canvas redraw → UI st
 1. **Pseudocode First**: Design decomposition logic before implementation
 2. **Simple Implementation**: Focus on correctness, not performance
 3. **Visual Testing**: Use Rectangle→Algorithm→compare with Cells button
-4. **Minimal Dependencies**: Keep implementation self-contained in `boustrophedon.js`
+4. **Minimal Dependencies**: Keep implementation self-contained in `CellularDecomposition.js`
 
 ## Agent Testing Limitations
 

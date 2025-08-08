@@ -44,7 +44,7 @@ class UIController {
         this.canvasManager.canvas.addEventListener('dragstart', (e) => e.preventDefault());
         this.updateDisplay();
         this.canvasManager.draw();
-        document.getElementById('boustrophedonCellularDecomposition').addEventListener('click', () => this.runBoustrophedon());
+    document.getElementById('cellularDecomposition').addEventListener('click', () => this.runCellular());
         
         // Initialize checkbox state
         document.getElementById('showCells').checked = this.canvasManager.showCells;
@@ -216,7 +216,7 @@ class UIController {
         this.uiStateManager.updateObstacleCount(obstacleCount);
     }
     
-    runBoustrophedon() {
+    runCellular() {
         // Validate that we have boundary points
         if (this.boundaryModel.boundaryPoints.length < 3) {
             alert('Please draw a boundary with at least 3 points before generating path cells.');
@@ -225,20 +225,20 @@ class UIController {
 
         try {
             // Set loading state
-            this.uiStateManager.setButtonState('boustrophedonCellularDecomposition', 'loading');
+            this.uiStateManager.setButtonState('cellularDecomposition', 'loading');
             this.uiStateManager.setAlgorithmStatus('Generating path cells...', true);
             
             // Use setTimeout to allow UI to update before running algorithm
             setTimeout(() => {
                 try {
-                    this.algorithmService.processAndVisualizeBoustrophedon(
+                    this.algorithmService.processAndVisualizeCellular(
                         this.boundaryModel, 
                         this.obstacleModel, 
                         this.canvasManager
                     );
                     
                     // Success state
-                    this.uiStateManager.setButtonState('boustrophedonCellularDecomposition', 'success');
+                    this.uiStateManager.setButtonState('cellularDecomposition', 'success');
                     this.uiStateManager.setAlgorithmStatus(`Generated ${this.canvasManager.cells.length} path cells`, true);
                     
                     // Update display with new cell information
@@ -250,8 +250,8 @@ class UIController {
                     }, 3000);
                     
                 } catch (error) {
-                    console.error('Boustrophedon algorithm failed:', error);
-                    this.uiStateManager.setButtonState('boustrophedonCellularDecomposition', 'normal');
+                    console.error('Cellular decomposition algorithm failed:', error);
+                    this.uiStateManager.setButtonState('cellularDecomposition', 'normal');
                     this.uiStateManager.setAlgorithmStatus('Error: Failed to generate path cells', true);
                     alert('Failed to generate path cells. Please check your boundary and try again.');
                     
@@ -263,8 +263,8 @@ class UIController {
             }, 100);
             
         } catch (error) {
-            console.error('Boustrophedon algorithm failed:', error);
-            this.uiStateManager.setButtonState('boustrophedonCellularDecomposition', 'normal');
+            console.error('Cellular decomposition algorithm failed:', error);
+            this.uiStateManager.setButtonState('cellularDecomposition', 'normal');
             this.uiStateManager.setAlgorithmStatus('Error: Failed to generate path cells', true);
             alert('Failed to generate path cells. Please check your boundary and try again.');
         }
