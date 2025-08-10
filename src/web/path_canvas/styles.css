@@ -106,6 +106,53 @@ h3 {
     transform: none;
 }
 
+/* Button group for grouped controls */
+.button-group {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.button-group .control-btn {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+/* Square button for icons */
+.control-btn-square {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background-color: #3498db;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0;
+}
+
+.control-btn-square:hover {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+}
+
+.control-btn-square:active {
+    transform: translateY(0);
+}
+
+.control-btn-square.cancel {
+    background-color: #e74c3c;
+}
+
+.control-btn-square.cancel:hover {
+    background-color: #c0392b;
+}
+
 /* Secondary button style */
 .control-btn.secondary {
     background-color: #95a5a6;
@@ -139,6 +186,16 @@ h3 {
 
 .control-btn.active:hover {
     background-color: #2980b9;
+}
+
+/* Cancel state - for buttons that should be red when in cancel mode */
+.control-btn.cancel {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.control-btn.cancel:hover {
+    background-color: #c0392b;
 }
 
 /* Checkbox controls */
@@ -365,4 +422,9 @@ input[type="number"]:focus {
 .canvas-container.drawing {
     border-color: #3498db;
     background-color: #e8f4f8;
+}
+
+.canvas-container.deleting {
+    border-color: #e74c3c;
+    background-color: #fdf2f2;
 }

@@ -19,7 +19,8 @@ class UIStateManager {
         };
         
         this.CSS_CLASSES = {
-            DRAWING: 'drawing'
+            DRAWING: 'drawing',
+            DELETING: 'deleting'
         };
     }
 
@@ -66,10 +67,24 @@ class UIStateManager {
         }
     }
 
+    updateContainerDeleteState(isDeleting) {
+        const container = document.querySelector('.canvas-container');
+        if (!container) return;
+        
+        if (isDeleting) {
+            container.classList.add(this.CSS_CLASSES.DELETING);
+            // Remove drawing class if present to avoid conflicts
+            container.classList.remove(this.CSS_CLASSES.DRAWING);
+        } else {
+            container.classList.remove(this.CSS_CLASSES.DELETING);
+        }
+    }
+
     resetAllButtons() {
         this.updateBoundaryButton(false);
         this.updateObstacleButton(false);
         this.updateContainerDrawingState(false);
+        this.updateContainerDeleteState(false);
     }
 
     updateDrawingModeUI(isDrawingBoundary, isDrawingObstacle, canvas) {

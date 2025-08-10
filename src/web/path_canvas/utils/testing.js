@@ -7,7 +7,13 @@ class TestingController {
     }
 
     initUI() {
-        document.getElementById('drawRectangle').addEventListener('click', () => this.drawRectangle());
+        document.getElementById('drawRectangle').addEventListener('click', () => {
+            // Cancel any active drawing/deletion modes before running test
+            if (this.uiController && this.uiController.cancelAllModes) {
+                this.uiController.cancelAllModes();
+            }
+            this.drawRectangle();
+        });
     }
 
     // rectangle boundary with diamond obstacle in the middle

@@ -13,8 +13,14 @@
             <h2>Controls</h2>
             <div class="controls-group">
                 <h3>Drawing Tools</h3>
-                <button id="drawBoundary" class="control-btn">Draw Boundary</button>
-                <button id="drawObstacle" class="control-btn">Draw Obstacle</button>
+                <div class="button-group">
+                    <button id="drawBoundary" class="control-btn">Draw Boundary</button>
+                    <button id="deleteBoundary" class="control-btn-square" title="Delete Boundary">🗑️</button>
+                </div>
+                <div class="button-group">
+                    <button id="drawObstacle" class="control-btn">Draw Obstacle</button>
+                    <button id="deleteObstacle" class="control-btn-square" title="Delete Obstacle">🗑️</button>
+                </div>
                 <button id="clearCanvas" class="control-btn">Clear Canvas</button>
                 <button id="exportData" class="control-btn">Export Data</button>
             </div>
