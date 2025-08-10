@@ -20,7 +20,7 @@ class InputEnvironment {
 
 class BoundaryPolygon {
     #polygonVertexListInserted;
-    #polygonVertexListCcw; // CW
+    #polygonVertexListCw; // CW
     #polygonEdgeList; // CW
 
     constructor () {
@@ -28,12 +28,20 @@ class BoundaryPolygon {
         this.#polygonEdgeList = [];
     }
 
+    get polygonVertexListCw() {
+        return this.#polygonVertexListCw;
+    }
+
+    get polygonEdgeList() {
+        return this.#polygonEdgeList;
+    }
+
     insertPolygonVertex(vertex) {
         this.#polygonVertexListInserted.push(vertex);
-        this.#polygonVertexListCcw = [...this.#polygonVertexListInserted];
+        this.#polygonVertexListCw = [...this.#polygonVertexListInserted];
 
         if ((this.#polygonVertexListInserted.length >= 3) && (!this.#isCW(this.#polygonVertexListInserted))) {
-            this.#polygonVertexListCcw.reverse();
+            this.#polygonVertexListCw.reverse();
         }
 
         this.#updateEdgeList();
@@ -52,9 +60,9 @@ class BoundaryPolygon {
     #updateEdgeList() {
         this.#polygonEdgeList = [];
 
-        for (let i = 0; i < this.#polygonVertexListCcw.length; i++) {
-            const start = this.#polygonVertexListCcw[i];
-            const end = this.#polygonVertexListCcw[(i + 1) % this.#polygonVertexListCcw.length];
+        for (let i = 0; i < this.#polygonVertexListCw.length; i++) {
+            const start = this.#polygonVertexListCw[i];
+            const end = this.#polygonVertexListCw[(i + 1) % this.#polygonVertexListCw.length];
             this.#polygonEdgeList.push(new PolygonEdge(start, end));
         }
     }
@@ -73,6 +81,14 @@ class ObstaclePolygon {
     constructor() {
         this.#polygonVertexListInserted = [];
         this.#polygonEdgeList = [];
+    }
+
+    get polygonVertexListCcw() {
+        return this.#polygonVertexListCcw;
+    }
+
+    get polygonEdgeList() {
+        return this.#polygonEdgeList;
     }
 
     insertPolygonVertex(vertex) {
