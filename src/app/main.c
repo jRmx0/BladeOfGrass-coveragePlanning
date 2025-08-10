@@ -7,7 +7,7 @@ int main()
 {
     struct mg_mgr mgr;
     
-    webserver_init(&mgr, "http://0.0.0.0:8000");
+    webserver_init(&mgr, "http://localhost:8000");
     
     for (;;) mg_mgr_poll(&mgr, 1000);
     
