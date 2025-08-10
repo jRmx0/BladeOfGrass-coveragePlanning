@@ -5,13 +5,26 @@ const DEFAULT_PATH_OVERLAP = 0.05;
 class InputEnvironment {
     constructor () {
         this.id = Math.floor(1000 + Math.random() * 9000);  // 4 digit random number
-        this.boundaryPolygon = new BoundaryPolygon();
-        this.obstaclePolygonList = [];
-
-        // Settings
         this.pathWidth = DEFAULT_PATH_WIDTH;
         this.pathOverlap = DEFAULT_PATH_OVERLAP;
+        
+        this.boundaryPolygon = new BoundaryPolygon();
+        this.obstaclePolygonList = [];
     }
+
+    get json() {
+        return {
+            id: this.id,
+            pathWidth: this.pathWidth,
+            pathOverlap: this.pathOverlap,
+
+            boundary: this.boundaryPolygon.polygonVertexListCw,
+
+            obstacleCount: this.obstaclePolygonList.length,
+            obstacles: this.obstaclePolygonList.map(obstacle => obstacle.polygonVertexListCcw)
+        };
+    }
+
     clear() {
         this.boundaryPolygon.clear();
         this.obstaclePolygonList = [];
@@ -69,6 +82,7 @@ class BoundaryPolygon {
 
     clear() {
         this.#polygonVertexListInserted = [];
+        this.#polygonVertexListCw = [];
         this.#polygonEdgeList = [];
     }
 }

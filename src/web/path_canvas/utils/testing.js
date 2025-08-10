@@ -1,7 +1,6 @@
 class TestingController {
-    constructor(boundaryModel, obstacleModel, canvasManager, uiController) {
-        this.boundaryModel = boundaryModel;
-        this.obstacleModel = obstacleModel;
+    constructor(inputEnvironment, canvasManager, uiController) {
+        this.inputEnvironment = inputEnvironment;
         this.canvasManager = canvasManager;
         this.uiController = uiController;
         this.initUI();
@@ -9,17 +8,12 @@ class TestingController {
 
     initUI() {
         document.getElementById('drawRectangle').addEventListener('click', () => this.drawRectangle());
-        document.getElementById('drawPredefinedCells').addEventListener('click', () => this.drawPredefinedCells());
     }
 
     // rectangle boundary with diamond obstacle in the middle
     drawRectangle() {
-        // Clear existing cells first
-        this.canvasManager.cells = [];
-        
         // Clear boundary and obstacles
-        this.boundaryModel.clear();
-        this.obstacleModel.clear();
+        this.inputEnvironment.clear();
         
         const rectanglePoints = [
             { x: -3, y: -2 },
@@ -27,59 +21,28 @@ class TestingController {
             { x: 3, y: 2 },
             { x: -3, y: 2 }
         ];
-        rectanglePoints.forEach(point => this.boundaryModel.boundaryPoints.push(point));
+        
+        // Add boundary vertices using the new structure
+        rectanglePoints.forEach(point => {
+            const vertex = new PolygonVertex(point.x, point.y);
+            this.inputEnvironment.boundaryPolygon.insertPolygonVertex(vertex);
+        });
 
-        this.obstacleModel.startNewObstacle();
-        this.obstacleModel.addPointToCurrentObstacle({ x: 0, y: -1 });
-        this.obstacleModel.addPointToCurrentObstacle({ x: 1, y: 0 });
-        this.obstacleModel.addPointToCurrentObstacle({ x: 0, y: 1 });
-        this.obstacleModel.addPointToCurrentObstacle({ x: -1, y: 0 });
-        
-        // Update display through UIController to refresh all UI elements
-        if (this.uiController && this.uiController.updateDisplay) {
-            this.uiController.updateDisplay();
-        }
-        
-        this.canvasManager.draw();
-    }
-
-    // Draw predefined cells for testing visualization
-    drawPredefinedCells() {
-        // Clear existing cells first
-        this.canvasManager.cells = [];
-        
-        // Define some sample cells for testing
-        const predefinedCells = [
-            [
-                { x: -3, y: -2 },
-                { x: -3, y: 2 },
-                { x: -1, y: 2 },
-                { x: -1, y: -2 }
-            ],
-            [
-                { x: -1, y: 0 },
-                { x: 0, y: -1 },
-                { x: 1, y: 0 },
-                { x: 1, y: -2 },
-                { x: -1, y: -2 }
-            ],
-            [
-                { x: -1, y: 0 },
-                { x: -1, y: 2 },
-                { x: 1, y: 2 },
-                { x: 1, y: 0 },
-                { x: 0, y: 1 }
-            ],
-            [
-                { x: 1, y: -2 },
-                { x: 1, y: 2 },
-                { x: 3, y: 2 },
-                { x: 3, y: -2 }
-            ]
+        // Create and add obstacle
+        const obstaclePolygon = new ObstaclePolygon();
+        const obstaclePoints = [
+            { x: 0, y: -1 },
+            { x: 1, y: 0 },
+            { x: 0, y: 1 },
+            { x: -1, y: 0 }
         ];
         
-        // Set the cells in canvas manager
-        this.canvasManager.cells = predefinedCells;
+        obstaclePoints.forEach(point => {
+            const vertex = new PolygonVertex(point.x, point.y);
+            obstaclePolygon.insertPolygonVertex(vertex);
+        });
+        
+        this.inputEnvironment.obstaclePolygonList.push(obstaclePolygon);
         
         // Update display through UIController to refresh all UI elements
         if (this.uiController && this.uiController.updateDisplay) {

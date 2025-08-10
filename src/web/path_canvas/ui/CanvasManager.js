@@ -1,9 +1,8 @@
 class CanvasManager {
-    constructor(canvas, boundaryModel, obstacleModel) {
+    constructor(canvas, inputEnvironment) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.boundaryModel = boundaryModel;
-        this.obstacleModel = obstacleModel;
+        this.inputEnvironment = inputEnvironment;
         this.scale = 1;
         this.offsetX = 0;
         this.offsetY = 0;
@@ -11,12 +10,15 @@ class CanvasManager {
         this.lastMouseY = 0;
         this.isDragging = false;
         this.showGrid = true;
-        this.showCells = true;
-        this.showCellNumbers = true;
         this.pixelsPerMeter = 100;
         this.isDrawingBoundary = false;
         this.isDrawingObstacle = false;
-        this.cells = [];
+        this.currentObstacle = null; // Track current obstacle being drawn
+        
+        // Notification system
+        this.notification = null;
+        this.notificationTimer = null;
+        
         this.setupCanvas();
     }
     setupCanvas() {
@@ -41,40 +43,85 @@ class CanvasManager {
         this.ctx.translate(this.offsetX, this.offsetY);
         this.ctx.scale(this.scale, this.scale);
         if (this.showGrid) this.drawGrid();
-        if (this.boundaryModel.boundaryPoints.length > 0) this.drawBoundary();
-        if (this.obstacleModel.obstacles.length > 0) this.drawObstacles();
-        if (this.cells.length > 0 && this.showCells) this.drawCells();
+        
+        const boundaryVertices = this.inputEnvironment.boundaryPolygon.polygonVertexListCw;
+        if (boundaryVertices && boundaryVertices.length > 0) this.drawBoundary();
+        
+        if (this.inputEnvironment.obstaclePolygonList.length > 0) this.drawObstacles();
+        
+        // Draw current obstacle being built
+        if (this.currentObstacle) this.drawCurrentObstacle();
+        
+        // Draw notification if present
+        if (this.notification) this.drawNotification();
+        
         this.ctx.restore();
     }
 
     drawObstacles() {
-        for (const obstacle of this.obstacleModel.obstacles) {
-            if (obstacle.length === 0) continue;
+        for (const obstaclePolygon of this.inputEnvironment.obstaclePolygonList) {
+            const vertices = obstaclePolygon.polygonVertexListCcw;
+            if (!vertices || vertices.length === 0) continue;
+            
             // Draw obstacle polygon
-            if (obstacle.length >= 2) {
-                this.ctx.strokeStyle = '#e67e22';
+            if (vertices.length >= 2) {
+                this.ctx.strokeStyle = '#e74c3c';
                 this.ctx.lineWidth = 2 / this.scale;
                 this.ctx.beginPath();
-                this.ctx.moveTo(obstacle[0].x * this.pixelsPerMeter, obstacle[0].y * this.pixelsPerMeter);
-                for (let i = 1; i < obstacle.length; i++) {
-                    this.ctx.lineTo(obstacle[i].x * this.pixelsPerMeter, obstacle[i].y * this.pixelsPerMeter);
+                this.ctx.moveTo(vertices[0].x * this.pixelsPerMeter, vertices[0].y * this.pixelsPerMeter);
+                for (let i = 1; i < vertices.length; i++) {
+                    this.ctx.lineTo(vertices[i].x * this.pixelsPerMeter, vertices[i].y * this.pixelsPerMeter);
                 }
-                if (obstacle.length > 2) {
+                if (vertices.length > 2) {
                     this.ctx.closePath();
-                    this.ctx.fillStyle = 'rgba(230, 126, 34, 0.15)';
+                    this.ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
                     this.ctx.fill();
                 }
                 this.ctx.stroke();
             }
             // Draw obstacle points
-            this.ctx.fillStyle = '#e67e22';
-            for (const point of obstacle) {
+            this.ctx.fillStyle = '#c0392b';
+            for (const point of vertices) {
                 this.ctx.beginPath();
                 this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 3 / this.scale, 0, Math.PI * 2);
                 this.ctx.fill();
             }
         }
     }
+
+    drawCurrentObstacle() {
+        if (!this.currentObstacle) return;
+        
+        const vertices = this.currentObstacle.polygonVertexListCcw;
+        if (!vertices || vertices.length === 0) return;
+        
+        // Draw current obstacle with same style as boundary but in red
+        if (vertices.length >= 2) {
+            this.ctx.strokeStyle = '#e74c3c'; // Same red as finished obstacles
+            this.ctx.lineWidth = 3 / this.scale; // Same thickness as boundary
+            this.ctx.beginPath();
+            this.ctx.moveTo(vertices[0].x * this.pixelsPerMeter, vertices[0].y * this.pixelsPerMeter);
+            for (let i = 1; i < vertices.length; i++) {
+                this.ctx.lineTo(vertices[i].x * this.pixelsPerMeter, vertices[i].y * this.pixelsPerMeter);
+            }
+            // Close the polygon if we have 3+ vertices (preview of final shape)
+            if (vertices.length > 2) {
+                this.ctx.closePath();
+                this.ctx.fillStyle = 'rgba(231, 76, 60, 0.15)'; // Same fill as finished obstacles
+                this.ctx.fill();
+            }
+            this.ctx.stroke();
+        }
+        
+        // Draw current obstacle points with same style as boundary
+        this.ctx.fillStyle = '#c0392b';
+        for (const point of vertices) {
+            this.ctx.beginPath();
+            this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 4 / this.scale, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+    }
+
     drawGrid() {
         const gridSize = 50;
         const bounds = {
@@ -105,10 +152,14 @@ class CanvasManager {
         this.ctx.stroke();
     }
     drawBoundary() {
-        const points = this.boundaryModel.boundaryPoints;
-        if (points.length === 0) return;
+        const points = this.inputEnvironment.boundaryPolygon.polygonVertexListCw;
+        if (!points || points.length === 0) return;
+        
+        // Determine if we're currently drawing (show highlighted) or finished (show normal)
+        const isCurrentlyDrawing = this.isDrawingBoundary;
+        
         if (points.length >= 2) {
-            this.ctx.strokeStyle = '#3498db';
+            this.ctx.strokeStyle = '#27ae60';
             this.ctx.lineWidth = 3 / this.scale;
             this.ctx.beginPath();
             this.ctx.moveTo(points[0].x * this.pixelsPerMeter, points[0].y * this.pixelsPerMeter);
@@ -117,186 +168,127 @@ class CanvasManager {
             }
             if (points.length > 2) {
                 this.ctx.closePath();
-                this.ctx.fillStyle = 'rgba(52, 152, 219, 0.1)';
+                this.ctx.fillStyle = 'rgba(39, 174, 96, 0.1)';
                 this.ctx.fill();
             }
             this.ctx.stroke();
         }
-        this.ctx.fillStyle = '#2980b9';
-        for (const point of points) {
-            this.ctx.beginPath();
-            this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 4 / this.scale, 0, Math.PI * 2);
-            this.ctx.fill();
-        }
-    }
-    drawCells() {
-        this.ctx.strokeStyle = '#2ecc71';
-        this.ctx.lineWidth = 2 / this.scale;
-        this.ctx.setLineDash([8, 4]);
         
-        // Add subtle fill for better visibility
-        this.ctx.fillStyle = 'rgba(46, 204, 113, 0.08)';
-        
-        for (let cellIndex = 0; cellIndex < this.cells.length; cellIndex++) {
-            const cell = this.cells[cellIndex];
-            
-            // Draw cell polygon
-            this.ctx.beginPath();
-            this.ctx.moveTo(cell[0].x * this.pixelsPerMeter, cell[0].y * this.pixelsPerMeter);
-            for (let i = 1; i < cell.length; i++) {
-                this.ctx.lineTo(cell[i].x * this.pixelsPerMeter, cell[i].y * this.pixelsPerMeter);
+        // Draw points with different size/style based on drawing state
+        if (isCurrentlyDrawing) {
+            // Larger, more prominent points while drawing
+            this.ctx.fillStyle = '#229954';
+            for (const point of points) {
+                this.ctx.beginPath();
+                this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 5 / this.scale, 0, Math.PI * 2);
+                this.ctx.fill();
             }
-            this.ctx.closePath();
-            this.ctx.fill();
-            this.ctx.stroke();
-            
-            // Calculate cell center (centroid) and draw number if enabled
-            if (this.showCellNumbers) {
-                const center = this.calculateCellCenter(cell);
-                this.drawCellNumber(center.x, center.y, cellIndex + 1);
-            }
-        }
-        this.ctx.setLineDash([]);
-    }
-    
-    calculateCellCenter(cell) {
-        // Find the point inside the polygon that is furthest from all edges
-        // This is better than centroid for label placement
-        return this.findOptimalLabelPosition(cell);
-    }
-    
-    findOptimalLabelPosition(polygon) {
-        // Find bounding box
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const point of polygon) {
-            minX = Math.min(minX, point.x);
-            minY = Math.min(minY, point.y);
-            maxX = Math.max(maxX, point.x);
-            maxY = Math.max(maxY, point.y);
-        }
-        
-        // Grid-based approach to find the point with maximum distance to edges
-        const gridSize = 0.1; // 10cm resolution
-        let bestPoint = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
-        let maxDistance = 0;
-        
-        // Sample points in a grid within the bounding box
-        for (let x = minX; x <= maxX; x += gridSize) {
-            for (let y = minY; y <= maxY; y += gridSize) {
-                const testPoint = { x, y };
-                
-                // Check if point is inside the polygon
-                if (this.isPointInPolygon(testPoint, polygon)) {
-                    // Calculate minimum distance to any edge
-                    const minDistToEdge = this.getMinDistanceToPolygonEdges(testPoint, polygon);
-                    
-                    if (minDistToEdge > maxDistance) {
-                        maxDistance = minDistToEdge;
-                        bestPoint = testPoint;
-                    }
-                }
-            }
-        }
-        
-        return {
-            x: bestPoint.x * this.pixelsPerMeter,
-            y: bestPoint.y * this.pixelsPerMeter
-        };
-    }
-    
-    isPointInPolygon(point, polygon) {
-        let inside = false;
-        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-            if (((polygon[i].y > point.y) !== (polygon[j].y > point.y)) &&
-                (point.x < (polygon[j].x - polygon[i].x) * (point.y - polygon[i].y) / (polygon[j].y - polygon[i].y) + polygon[i].x)) {
-                inside = !inside;
-            }
-        }
-        return inside;
-    }
-    
-    getMinDistanceToPolygonEdges(point, polygon) {
-        let minDistance = Infinity;
-        
-        for (let i = 0; i < polygon.length; i++) {
-            const j = (i + 1) % polygon.length;
-            const edge = { start: polygon[i], end: polygon[j] };
-            const distance = this.getDistanceToLineSegment(point, edge);
-            minDistance = Math.min(minDistance, distance);
-        }
-        
-        return minDistance;
-    }
-    
-    getDistanceToLineSegment(point, edge) {
-        const { start, end } = edge;
-        const A = point.x - start.x;
-        const B = point.y - start.y;
-        const C = end.x - start.x;
-        const D = end.y - start.y;
-        
-        const dot = A * C + B * D;
-        const lenSq = C * C + D * D;
-        
-        if (lenSq === 0) {
-            // Start and end are the same point
-            return Math.sqrt(A * A + B * B);
-        }
-        
-        let param = dot / lenSq;
-        
-        let xx, yy;
-        if (param < 0) {
-            xx = start.x;
-            yy = start.y;
-        } else if (param > 1) {
-            xx = end.x;
-            yy = end.y;
         } else {
-            xx = start.x + param * C;
-            yy = start.y + param * D;
+            // Medium-sized points when completed (visible but not highlighted)
+            this.ctx.fillStyle = '#27ae60';
+            for (const point of points) {
+                this.ctx.beginPath();
+                this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 3.5 / this.scale, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
         }
-        
-        const dx = point.x - xx;
-        const dy = point.y - yy;
-        return Math.sqrt(dx * dx + dy * dy);
     }
-    
-    drawCellNumber(x, y, number) {
-        // Save context
+
+    drawNotification() {
+        if (!this.notification) return;
+        
+        // Save current context
         this.ctx.save();
         
-        // Set font properties (scale with zoom)
-        const fontSize = Math.max(12, 16 / this.scale);
-        this.ctx.font = `bold ${fontSize}px Arial`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
+        // Reset transformations for UI elements
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         
-        // Draw background circle for better visibility
-        const text = number.toString();
-        const textMetrics = this.ctx.measureText(text);
-        const padding = 4 / this.scale;
-        const radius = Math.max(textMetrics.width / 2 + padding, fontSize / 2 + padding);
+        const padding = 16;
+        const cornerRadius = 8;
+        const maxWidth = 280;
+        const iconSize = 16;
         
-        // Background circle
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        // Set font for measuring
+        this.ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+        
+        // Measure text
+        const textMetrics = this.ctx.measureText(this.notification);
+        const textWidth = Math.min(textMetrics.width, maxWidth);
+        const textHeight = 16;
+        
+        // Calculate notification box dimensions
+        const boxWidth = textWidth + padding * 2 + iconSize + 8; // Extra space for icon
+        const boxHeight = Math.max(textHeight + padding * 2, 48);
+        
+        // Position in top-right corner with margin
+        const x = this.canvas.width - boxWidth - 20;
+        const y = 20;
+        
+        // Draw shadow
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
         this.ctx.beginPath();
-        this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+        this.ctx.roundRect(x + 2, y + 2, boxWidth, boxHeight, cornerRadius);
         this.ctx.fill();
         
-        // Border for the circle
-        this.ctx.strokeStyle = '#2ecc71';
-        this.ctx.lineWidth = 1.5 / this.scale;
-        this.ctx.setLineDash([]);
+        // Draw background with gradient
+        const gradient = this.ctx.createLinearGradient(x, y, x, y + boxHeight);
+        gradient.addColorStop(0, 'rgba(45, 55, 72, 0.98)');
+        gradient.addColorStop(1, 'rgba(26, 32, 44, 0.98)');
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.roundRect(x, y, boxWidth, boxHeight, cornerRadius);
+        this.ctx.fill();
+        
+        // Draw subtle border
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.lineWidth = 1;
         this.ctx.stroke();
         
-        // Draw number text (flip text back to readable orientation)
-        this.ctx.fillStyle = '#2c3e50';
-        this.ctx.fillText(text, x, y); 
+        // Draw info icon (i)
+        const iconX = x + padding;
+        const iconY = y + boxHeight / 2;
+        
+        // Icon background circle
+        this.ctx.fillStyle = 'rgba(59, 130, 246, 0.9)'; // Blue
+        this.ctx.beginPath();
+        this.ctx.arc(iconX + iconSize/2, iconY, iconSize/2, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Icon text "i"
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText('i', iconX + iconSize/2, iconY);
+        
+        // Draw main text
+        this.ctx.fillStyle = '#e2e8f0';
+        this.ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(this.notification, iconX + iconSize + 8, iconY, maxWidth);
         
         // Restore context
         this.ctx.restore();
     }
+
+    showNotification(message, duration = 3000) {
+        this.notification = message;
+        
+        // Clear existing timer
+        if (this.notificationTimer) {
+            clearTimeout(this.notificationTimer);
+        }
+        
+        // Set timer to hide notification
+        this.notificationTimer = setTimeout(() => {
+            this.notification = null;
+            this.draw();
+        }, duration);
+        
+        this.draw();
+    }
+
     resetView() {
         this.scale = 1;
         this.offsetX = this.canvas.width / 2;
@@ -305,14 +297,6 @@ class CanvasManager {
     }
     toggleGrid() {
         this.showGrid = !this.showGrid;
-        this.draw();
-    }
-    toggleCells() {
-        this.showCells = !this.showCells;
-        this.draw();
-    }
-    clearCellsOnly() {
-        this.cells = [];
         this.draw();
     }
 }

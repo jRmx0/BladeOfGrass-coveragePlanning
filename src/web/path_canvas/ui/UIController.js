@@ -1,7 +1,6 @@
 class UIController {
-    constructor(boundaryModel, obstacleModel, canvasManager) {
-        this.boundaryModel = boundaryModel;
-        this.obstacleModel = obstacleModel;
+    constructor(inputEnvironment, canvasManager) {
+        this.inputEnvironment = inputEnvironment;
         this.canvasManager = canvasManager;
         this.isDrawingBoundary = false;
         this.isDrawingObstacle = false;
@@ -10,7 +9,6 @@ class UIController {
         this.dataService = new DataService();
         this.uiStateManager = new UIStateManager();
         this.coordinateTransformer = new CoordinateTransformer(canvasManager);
-        this.algorithmService = new AlgorithmService(this.dataService);
         
         this.initUI();
     }
@@ -22,18 +20,15 @@ class UIController {
             obstacleBtn.addEventListener('click', () => this.toggleDrawingMode('obstacle'));
         }
         document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
-        document.getElementById('clearCells').addEventListener('click', () => this.clearCellsOnly());
         document.getElementById('resetView').addEventListener('click', () => this.canvasManager.resetView());
         document.getElementById('toggleGrid').addEventListener('click', () => this.canvasManager.toggleGrid());
-        document.getElementById('showCells').addEventListener('change', (e) => this.toggleCellVisibility(e.target.checked));
-        document.getElementById('showCellNumbers').addEventListener('change', (e) => this.toggleCellNumbers(e.target.checked));
         document.getElementById('exportData').addEventListener('click', () => this.exportData());
         document.getElementById('pathWidth').addEventListener('change', (e) => {
-            this.boundaryModel.pathWidth = parseFloat(e.target.value);
+            this.inputEnvironment.pathWidth = parseFloat(e.target.value);
             this.updateDisplay();
         });
         document.getElementById('pathOverlap').addEventListener('change', (e) => {
-            this.boundaryModel.pathOverlap = parseFloat(e.target.value);
+            this.inputEnvironment.pathOverlap = parseFloat(e.target.value);
             this.updateDisplay();
         });
         this.canvasManager.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
@@ -42,43 +37,73 @@ class UIController {
         this.canvasManager.canvas.addEventListener('wheel', (e) => this.handleWheel(e));
         this.canvasManager.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         this.canvasManager.canvas.addEventListener('dragstart', (e) => e.preventDefault());
+        
+        // Add keyboard event listener for ESC key
+        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        
         this.updateDisplay();
         this.canvasManager.draw();
-    document.getElementById('cellularDecomposition').addEventListener('click', () => this.runCellular());
-        
-        // Initialize checkbox state
-        document.getElementById('showCells').checked = this.canvasManager.showCells;
-        document.getElementById('showCellNumbers').checked = this.canvasManager.showCellNumbers;
-        
-        // Initialize clear cells button state
-        this.uiStateManager.updateClearCellsButton(this.canvasManager.cells.length > 0);
     }
 
-    async exportData() {
-        try {
-            // Export model and current cells from canvas manager
-            await this.algorithmService.exportModelAndDecomposition(
-                this.boundaryModel, 
-                this.obstacleModel, 
-                this.canvasManager.cells
-            );
-        } catch (error) {
-            console.error('Export failed:', error);
-        }
+    exportData() {
+        this.exportEnvironmentToConsole();
     }
 
-    exportModelToConsole() {
-        const data = this.algorithmService.createModelData(this.boundaryModel, this.obstacleModel);
+    exportEnvironmentToConsole() {
+        const data = this.inputEnvironment.json;
         this.dataService.exportToConsole(data);
     }
     toggleDrawingMode(mode) {
         if (mode === 'boundary') {
-            this.isDrawingBoundary = !this.isDrawingBoundary;
+            if (this.isDrawingBoundary) {
+                // Check if boundary has at least 3 points before stopping
+                const currentVertices = this.inputEnvironment.boundaryPolygon.polygonVertexListCw;
+                if (currentVertices && currentVertices.length >= 3) {
+                    this.isDrawingBoundary = false;
+                    this.canvasManager.isDrawingBoundary = false;
+                } else if (currentVertices && currentVertices.length > 0) {
+                    // User wants to cancel incomplete boundary
+                    this.cancelCurrentBoundary();
+                    this.canvasManager.showNotification('Boundary requires at least 3 points to complete.');
+                    this.isDrawingBoundary = false;
+                    this.canvasManager.isDrawingBoundary = false;
+                } else {
+                    // No points, just exit drawing mode
+                    this.isDrawingBoundary = false;
+                    this.canvasManager.isDrawingBoundary = false;
+                }
+            } else {
+                this.isDrawingBoundary = true;
+                this.canvasManager.isDrawingBoundary = true;
+            }
             this.isDrawingObstacle = false;
+            this.canvasManager.isDrawingObstacle = false;
         } else if (mode === 'obstacle') {
-            this.isDrawingObstacle = !this.isDrawingObstacle;
+            // If stopping obstacle drawing, finish the current obstacle first
+            if (this.isDrawingObstacle) {
+                if (this.canvasManager.currentObstacle && 
+                    this.canvasManager.currentObstacle.polygonVertexListCcw?.length >= 3) {
+                    this.finishCurrentObstacle();
+                } else if (this.canvasManager.currentObstacle && 
+                           this.canvasManager.currentObstacle.polygonVertexListCcw?.length > 0) {
+                    // User wants to cancel incomplete obstacle
+                    this.cancelCurrentObstacle();
+                    this.canvasManager.showNotification('Obstacle requires at least 3 points to complete.');
+                    this.isDrawingObstacle = false;
+                } else {
+                    // No points, just exit drawing mode
+                    this.isDrawingObstacle = false;
+                }
+            } else {
+                this.isDrawingObstacle = true;
+            }
+            
             this.isDrawingBoundary = false;
-            if (this.isDrawingObstacle) this.obstacleModel.startNewObstacle();
+            
+            // Clear any existing current obstacle when toggling mode off
+            if (!this.isDrawingObstacle) {
+                this.canvasManager.currentObstacle = null;
+            }
         }
         
         // Sync state with canvas manager
@@ -93,11 +118,11 @@ class UIController {
         );
         
         this.updateDisplay();
+        this.canvasManager.draw();
     }
     clearCanvas() {
-        this.boundaryModel.clear();
-        this.obstacleModel.clear();
-        this.canvasManager.cells = [];
+        this.inputEnvironment.clear();
+        this.canvasManager.currentObstacle = null;
         this.isDrawingBoundary = false;
         this.isDrawingObstacle = false;
         this.canvasManager.isDrawingBoundary = false;
@@ -111,38 +136,14 @@ class UIController {
         this.canvasManager.draw();
     }
 
-    clearCellsOnly() {
-        this.canvasManager.clearCellsOnly();
-        this.updateDisplay();
-    }
 
-    toggleCellVisibility(show) {
-        this.canvasManager.showCells = show;
-        this.canvasManager.draw();
-    }
-
-    toggleCellNumbers(show) {
-        this.canvasManager.showCellNumbers = show;
-        this.canvasManager.draw();
-    }
-
-    calculateCoverageArea() {
-        // Simple approximation based on cell count and average cell size
-        // This could be improved with actual polygon area calculation
-        const cellCount = this.canvasManager.cells.length;
-        const estimatedAreaPerCell = 1.5; // m² per cell (rough estimate)
-        return cellCount * estimatedAreaPerCell;
-    }
     handleMouseDown(e) {
         const mousePos = this.coordinateTransformer.getMousePositionFromEvent(e);
         const worldMeters = this.coordinateTransformer.screenToWorldMeters(mousePos.x, mousePos.y);
         
-        if (this.isDrawingBoundary) {
-            this.boundaryModel.boundaryPoints.push({ x: worldMeters.x, y: worldMeters.y });
-            this.updateDisplay();
-            this.canvasManager.draw();
-        } else if (this.isDrawingObstacle) {
-            this.obstacleModel.addPointToCurrentObstacle({ x: worldMeters.x, y: worldMeters.y });
+        if (this.isDrawingBoundary || this.isDrawingObstacle) {
+            // Unified drawing logic for both boundary and obstacles
+            this.addVertexToCurrentPolygon(worldMeters, e.button);
             this.updateDisplay();
             this.canvasManager.draw();
         } else {
@@ -150,6 +151,63 @@ class UIController {
             this.canvasManager.lastMouseX = mousePos.x;
             this.canvasManager.lastMouseY = mousePos.y;
             this.uiStateManager.updateCanvasCursor(this.canvasManager.canvas, this.uiStateManager.CURSORS.GRABBING);
+        }
+    }
+
+    addVertexToCurrentPolygon(worldMeters, mouseButton) {
+        if (this.isDrawingBoundary) {
+            // Handle right click to finish boundary (if it has at least 3 points)
+            if (mouseButton === 2) {
+                const currentVertices = this.inputEnvironment.boundaryPolygon.polygonVertexListCw;
+                if (currentVertices && currentVertices.length >= 3) {
+                    // Finish boundary drawing
+                    this.isDrawingBoundary = false;
+                    this.canvasManager.isDrawingBoundary = false;
+                    this.uiStateManager.updateDrawingModeUI(false, this.isDrawingObstacle, this.canvasManager.canvas);
+                } else if (currentVertices && currentVertices.length > 0) {
+                    // Cancel incomplete boundary
+                    this.cancelCurrentBoundary();
+                    this.canvasManager.showNotification('Boundary requires at least 3 points to complete.');
+                    this.uiStateManager.updateDrawingModeUI(false, this.isDrawingObstacle, this.canvasManager.canvas);
+                }
+                return;
+            }
+            
+            // Only add vertex on left click
+            if (mouseButton === 0) {
+                const vertex = new PolygonVertex(worldMeters.x, worldMeters.y);
+                this.inputEnvironment.boundaryPolygon.insertPolygonVertex(vertex);
+            }
+        } else if (this.isDrawingObstacle) {
+            // Handle right click to finish obstacle (if it has at least 3 points)
+            if (mouseButton === 2) {
+                if (this.canvasManager.currentObstacle && 
+                    this.canvasManager.currentObstacle.polygonVertexListCcw?.length >= 3) {
+                    this.finishCurrentObstacle();
+                    this.isDrawingObstacle = false;
+                    this.canvasManager.isDrawingObstacle = false;
+                    this.uiStateManager.updateDrawingModeUI(this.isDrawingBoundary, false, this.canvasManager.canvas);
+                } else if (this.canvasManager.currentObstacle && 
+                           this.canvasManager.currentObstacle.polygonVertexListCcw?.length > 0) {
+                    // Cancel incomplete obstacle
+                    this.cancelCurrentObstacle();
+                    this.canvasManager.showNotification('Obstacle requires at least 3 points to complete.');
+                    this.uiStateManager.updateDrawingModeUI(this.isDrawingBoundary, false, this.canvasManager.canvas);
+                }
+                return;
+            }
+            
+            // Only add vertex on left click
+            if (mouseButton === 0) {
+                // Ensure we have a current obstacle
+                if (!this.canvasManager.currentObstacle) {
+                    this.canvasManager.currentObstacle = new ObstaclePolygon();
+                }
+                
+                // Add vertex to current obstacle
+                const vertex = new PolygonVertex(worldMeters.x, worldMeters.y);
+                this.canvasManager.currentObstacle.insertPolygonVertex(vertex);
+            }
         }
     }
     handleMouseMove(e) {
@@ -197,80 +255,81 @@ class UIController {
         this.updateDisplay();
         this.canvasManager.draw();
     }
+
+    handleKeyDown(e) {
+        // Handle ESC key to cancel current drawing
+        if (e.key === 'Escape' || e.keyCode === 27) {
+            if (this.isDrawingBoundary) {
+                const currentVertices = this.inputEnvironment.boundaryPolygon.polygonVertexListCw;
+                if (currentVertices && currentVertices.length > 0) {
+                    this.cancelCurrentBoundary();
+                    this.canvasManager.showNotification('Boundary drawing cancelled.');
+                    this.uiStateManager.updateDrawingModeUI(false, this.isDrawingObstacle, this.canvasManager.canvas);
+                } else {
+                    // No vertices, just exit drawing mode
+                    this.isDrawingBoundary = false;
+                    this.canvasManager.isDrawingBoundary = false;
+                    this.uiStateManager.updateDrawingModeUI(false, this.isDrawingObstacle, this.canvasManager.canvas);
+                }
+                this.updateDisplay();
+                this.canvasManager.draw();
+            } else if (this.isDrawingObstacle) {
+                if (this.canvasManager.currentObstacle && 
+                    this.canvasManager.currentObstacle.polygonVertexListCcw?.length > 0) {
+                    this.cancelCurrentObstacle();
+                    this.canvasManager.showNotification('Obstacle drawing cancelled.');
+                    this.uiStateManager.updateDrawingModeUI(this.isDrawingBoundary, false, this.canvasManager.canvas);
+                } else {
+                    // No vertices, just exit drawing mode
+                    this.isDrawingObstacle = false;
+                    this.canvasManager.isDrawingObstacle = false;
+                    this.canvasManager.currentObstacle = null;
+                    this.uiStateManager.updateDrawingModeUI(this.isDrawingBoundary, false, this.canvasManager.canvas);
+                }
+                this.updateDisplay();
+                this.canvasManager.draw();
+            }
+            
+            // Prevent default ESC behavior
+            e.preventDefault();
+        }
+    }
+
     updateDisplay() {
+        const boundaryVertices = this.inputEnvironment.boundaryPolygon.polygonVertexListCw;
+        const boundaryPointsCount = boundaryVertices ? boundaryVertices.length : 0;
+        
         this.uiStateManager.updateDisplayInfo(
-            this.boundaryModel.boundaryPoints.length, 
+            boundaryPointsCount, 
             this.canvasManager.scale
         );
         
-        // Update cell information
-        const cellCount = this.canvasManager.cells.length;
-        const coverageArea = this.calculateCoverageArea();
-        this.uiStateManager.updateCellInfo(cellCount, coverageArea);
-        
-        // Update clear cells button state based on whether cells exist
-        this.uiStateManager.updateClearCellsButton(cellCount > 0);
-        
         // Update obstacle count
-        const obstacleCount = this.obstacleModel.obstacles.filter(obs => obs.length > 0).length;
+        const obstacleCount = this.inputEnvironment.obstaclePolygonList.filter(obs => 
+            obs.polygonVertexListCcw && obs.polygonVertexListCcw.length > 0
+        ).length;
         this.uiStateManager.updateObstacleCount(obstacleCount);
     }
-    
-    runCellular() {
-        // Validate that we have boundary points
-        if (this.boundaryModel.boundaryPoints.length < 3) {
-            alert('Please draw a boundary with at least 3 points before generating path cells.');
-            return;
-        }
-
-        try {
-            // Set loading state
-            this.uiStateManager.setButtonState('cellularDecomposition', 'loading');
-            this.uiStateManager.setAlgorithmStatus('Generating path cells...', true);
-            
-            // Use setTimeout to allow UI to update before running algorithm
-            setTimeout(() => {
-                try {
-                    this.algorithmService.processAndVisualizeCellular(
-                        this.boundaryModel, 
-                        this.obstacleModel, 
-                        this.canvasManager
-                    );
-                    
-                    // Success state
-                    this.uiStateManager.setButtonState('cellularDecomposition', 'success');
-                    this.uiStateManager.setAlgorithmStatus(`Generated ${this.canvasManager.cells.length} path cells`, true);
-                    
-                    // Update display with new cell information
-                    this.updateDisplay();
-                    
-                    // Hide status after 3 seconds
-                    setTimeout(() => {
-                        this.uiStateManager.setAlgorithmStatus('', false);
-                    }, 3000);
-                    
-                } catch (error) {
-                    console.error('Cellular decomposition algorithm failed:', error);
-                    this.uiStateManager.setButtonState('cellularDecomposition', 'normal');
-                    this.uiStateManager.setAlgorithmStatus('Error: Failed to generate path cells', true);
-                    alert('Failed to generate path cells. Please check your boundary and try again.');
-                    
-                    // Hide error status after 5 seconds
-                    setTimeout(() => {
-                        this.uiStateManager.setAlgorithmStatus('', false);
-                    }, 5000);
-                }
-            }, 100);
-            
-        } catch (error) {
-            console.error('Cellular decomposition algorithm failed:', error);
-            this.uiStateManager.setButtonState('cellularDecomposition', 'normal');
-            this.uiStateManager.setAlgorithmStatus('Error: Failed to generate path cells', true);
-            alert('Failed to generate path cells. Please check your boundary and try again.');
+    finishCurrentObstacle() {
+        if (this.canvasManager.currentObstacle && 
+            this.canvasManager.currentObstacle.polygonVertexListCcw?.length > 0) {
+            // Add the completed obstacle to the environment
+            this.inputEnvironment.obstaclePolygonList.push(this.canvasManager.currentObstacle);
+            this.canvasManager.currentObstacle = null;
         }
     }
 
-    getModelData() {
-        return this.algorithmService.createModelData(this.boundaryModel, this.obstacleModel);
+    cancelCurrentBoundary() {
+        // Clear the incomplete boundary without saving
+        this.inputEnvironment.boundaryPolygon.clear();
+        this.isDrawingBoundary = false;
+        this.canvasManager.isDrawingBoundary = false;
+    }
+
+    cancelCurrentObstacle() {
+        // Clear the incomplete obstacle without saving
+        this.canvasManager.currentObstacle = null;
+        this.isDrawingObstacle = false;
+        this.canvasManager.isDrawingObstacle = false;
     }
 }

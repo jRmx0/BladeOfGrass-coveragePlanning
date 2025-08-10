@@ -19,19 +19,6 @@
                 <button id="exportData" class="control-btn">Export Data</button>
             </div>
             <div class="controls-group">
-                <h3>Path Planning</h3>
-                <button id="cellularDecomposition" class="control-btn">Generate Path Cells</button>
-                <button id="clearCells" class="control-btn secondary" disabled>Clear Cells Only</button>
-                <div class="checkbox-control">
-                    <input type="checkbox" id="showCells" checked>
-                    <label for="showCells">Show Path Cells</label>
-                </div>
-                <div class="checkbox-control">
-                    <input type="checkbox" id="showCellNumbers" checked>
-                    <label for="showCellNumbers">Show Cell Numbers</label>
-                </div>
-            </div>
-            <div class="controls-group">
                 <h3>Canvas Controls</h3>
                 <button id="resetView" class="control-btn">Reset View</button>
                 <button id="toggleGrid" class="control-btn">Toggle Grid</button>
@@ -40,7 +27,6 @@
                 <h3>Testing</h3>
                 <div class="button-row">
                     <button id="drawRectangle" class="control-btn">Rectangle</button>
-                    <button id="drawPredefinedCells" class="control-btn small">Cells</button>
                 </div>
             </div>
             <div class="controls-group">
@@ -79,15 +65,7 @@
                 </div>
             </div>
             <div class="data-group">
-                <h3>Path Planning</h3>
-                <div class="data-item">
-                    <label>Path Cells:</label>
-                    <span id="cellCount">0</span>
-                </div>
-                <div class="data-item">
-                    <label>Coverage Area:</label>
-                    <span id="coverageArea">0 m²</span>
-                </div>
+                <h3>Statistics</h3>
                 <div class="data-item" id="algorithmStatus" style="display: none;">
                     <label>Status:</label>
                     <span id="algorithmStatusText">Ready</span>
@@ -96,15 +74,12 @@
         </div>
     </div>
 
-    <script src="models/BoundaryModel.js"></script>
-    <script src="models/ObstacleModel.js"></script>
-    <script src="ui/CanvasManager.js"></script>
-    <script src="services/DataService.js"></script>
-    <script src="ui/UIStateManager.js"></script>
+    <script src="environment/InputEnvironment.js"></script>
     <script src="services/CoordinateTransformer.js"></script>
-    <script src="services/AlgorithmService.js"></script>
+    <script src="services/DataService.js"></script>
+    <script src="ui/CanvasManager.js"></script>
     <script src="ui/UIController.js"></script>
-    <script src="algorithms/CellularDecomposition.js"></script>
+    <script src="ui/UIStateManager.js"></script>
     <script src="utils/testing.js"></script>
     <script src="app.js"></script>
 </body>
