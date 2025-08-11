@@ -30,6 +30,11 @@ class UIController {
         if (deleteBtn) {
             deleteBtn.addEventListener('click', () => this.toggleDeleteMode());
         }
+        // Add vertex numbers toggle (switch) if present
+        const toggleVertexSwitch = document.getElementById('toggleVertexNumbers');
+        if (toggleVertexSwitch) {
+            toggleVertexSwitch.addEventListener('change', (e) => this.toggleVertexNumbers(e.target.checked));
+        }
         document.getElementById('clearCanvas').addEventListener('click', () => { this.cancelAllModes(); this.clearCanvas(); });
         document.getElementById('resetView').addEventListener('click', () => { this.cancelAllModes(); this.handleResetView(); });
         document.getElementById('toggleGrid').addEventListener('click', () => { this.cancelAllModes(); this.handleToggleGrid(); });
@@ -54,6 +59,17 @@ class UIController {
         // Add keyboard event listener for ESC key
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
         
+        this.updateDisplay();
+        this.canvasManager.draw();
+    }
+
+    toggleVertexNumbers(isOn) {
+        // If param not provided (legacy), flip; otherwise set from switch state
+        if (typeof isOn === 'boolean') {
+            this.canvasManager.showVertexNumbers = isOn;
+        } else {
+            this.canvasManager.showVertexNumbers = !this.canvasManager.showVertexNumbers;
+        }
         this.updateDisplay();
         this.canvasManager.draw();
     }

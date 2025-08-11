@@ -14,6 +14,8 @@ class CanvasManager {
         this.isDrawingBoundary = false;
         this.isDrawingObstacle = false;
         this.currentObstacle = null; // Track current obstacle being drawn
+    this.showVertexNumbers = false; // debug toggle
+    this.vertexScale = 1; // scales point radius when showVertexNumbers is on
         
         // Notification system
         this.notification = null;
@@ -81,11 +83,15 @@ class CanvasManager {
             }
             // Draw obstacle points
             this.ctx.fillStyle = '#c0392b';
+            const r = this.getPointRadius(false);
             for (const point of vertices) {
                 this.ctx.beginPath();
-                this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 3 / this.scale, 0, Math.PI * 2);
+                this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, r, 0, Math.PI * 2);
                 this.ctx.fill();
             }
+
+            // Draw obstacle vertex numbers (if enabled)
+            if (this.showVertexNumbers) this.drawVertexLabels(vertices, '#c0392b');
         }
     }
 
@@ -115,11 +121,15 @@ class CanvasManager {
         
         // Draw current obstacle points with same style as boundary
         this.ctx.fillStyle = '#c0392b';
+        const r = this.getPointRadius(true);
         for (const point of vertices) {
             this.ctx.beginPath();
-            this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 4 / this.scale, 0, Math.PI * 2);
+            this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, r, 0, Math.PI * 2);
             this.ctx.fill();
         }
+
+        // Draw current obstacle vertex numbers (if enabled)
+        if (this.showVertexNumbers) this.drawVertexLabels(vertices, '#c0392b');
     }
 
     drawGrid() {
@@ -178,20 +188,61 @@ class CanvasManager {
         if (isCurrentlyDrawing) {
             // Larger, more prominent points while drawing
             this.ctx.fillStyle = '#229954';
+            const r = this.getPointRadius(true);
             for (const point of points) {
                 this.ctx.beginPath();
-                this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 5 / this.scale, 0, Math.PI * 2);
+                this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, r, 0, Math.PI * 2);
                 this.ctx.fill();
             }
         } else {
             // Medium-sized points when completed (visible but not highlighted)
             this.ctx.fillStyle = '#27ae60';
+            const r = this.getPointRadius(false);
             for (const point of points) {
                 this.ctx.beginPath();
-                this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, 3.5 / this.scale, 0, Math.PI * 2);
+                this.ctx.arc(point.x * this.pixelsPerMeter, point.y * this.pixelsPerMeter, r, 0, Math.PI * 2);
                 this.ctx.fill();
             }
         }
+
+        // Draw boundary vertex numbers (if enabled)
+        if (this.showVertexNumbers) this.drawVertexLabels(points, '#1e8449');
+    }
+
+    // Helper: draw vertex index labels centered inside each point
+    drawVertexLabels(vertices, color = '#000000') {
+        if (!vertices || vertices.length === 0) return;
+
+    // Slightly larger font to fit inside the vertex dot; scales with zoom
+    const fontPx = Math.max(7, Math.round(10 / this.scale));
+
+        // Configure text drawing styles: center/middle to place inside the dot
+        this.ctx.font = `${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+
+        for (let i = 0; i < vertices.length; i++) {
+            const v = vertices[i];
+            const x = v.x * this.pixelsPerMeter;
+            const y = v.y * this.pixelsPerMeter;
+            const label = String(i + 1);
+
+            // Dark outline for contrast against vertex fill
+            this.ctx.lineWidth = Math.max(1, 2 / this.scale);
+            this.ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+            this.ctx.strokeText(label, x, y);
+
+            // White text inside the colored dot for readability
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillText(label, x, y);
+        }
+    }
+
+    getPointRadius(isDrawing) {
+        // Base radii
+        const base = isDrawing ? 5 : 3.5; // previous sizes
+        const scaleFactor = this.showVertexNumbers ? 1.8 : 1.0; // enlarge when showing numbers
+        return (base * scaleFactor) / this.scale;
     }
 
     drawNotification() {

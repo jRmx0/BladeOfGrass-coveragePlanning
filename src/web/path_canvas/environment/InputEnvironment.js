@@ -157,3 +157,6 @@ class PolygonEdge {
         this.polygonVertexEnd = polygonVertexEnd;
     }
 }
+
+// Export classes for use in other modules
+try { module.exports = { InputEnvironment, BoundaryPolygon, ObstaclePolygon, PolygonVertex, PolygonEdge }; } catch (_) {}
