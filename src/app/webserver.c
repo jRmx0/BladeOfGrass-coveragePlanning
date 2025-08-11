@@ -66,6 +66,9 @@ void webserver_event_handler(struct mg_connection *c, int ev, void *ev_data)
             case ROUTE_SEND:
                 handle_send_route(c, hm);
                 break;
+            case ROUTE_PATH_INPUT_ENVIRONMENT_EXPORT:
+                handle_path_input_environment_export_route(c, hm);
+                break;
             
             case ROUTE_TEST_INDEX:
                 handle_test_route(c, hm);
@@ -245,6 +248,9 @@ route_type_t get_route_type(struct mg_str uri)
     if (mg_strcmp(uri, mg_str("/send")) == 0) {
         return ROUTE_SEND;
     }
+    if (mg_strcmp(uri, mg_str("/environment/InputEnvironment/export")) == 0) {
+        return ROUTE_PATH_INPUT_ENVIRONMENT_EXPORT;
+    }
     
     if (mg_strcmp(uri, mg_str("/test")) == 0) {
         return ROUTE_TEST_INDEX;
@@ -257,4 +263,41 @@ route_type_t get_route_type(struct mg_str uri)
     }
     
     return ROUTE_UNKNOWN;
+}
+
+void handle_path_input_environment_export_route(struct mg_connection *c, struct mg_http_message *hm)
+{
+    // Copy body to null-terminated string
+    char *body_str = (char *) malloc(hm->body.len + 1);
+    if (!body_str) {
+        mg_http_reply(c, 500, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"OOM\"}");
+        return;
+    }
+    memcpy(body_str, hm->body.buf, hm->body.len);
+    body_str[hm->body.len] = '\0';
+
+    // Parse and pretty print JSON to server console
+    cJSON *json = cJSON_Parse(body_str);
+    if (json) {
+        char *pretty = cJSON_Print(json);
+        if (pretty) {
+            printf("/environment/InputEnvironment/export received JSON:\n%s\n", pretty);
+            free(pretty);
+        } else {
+            printf("/environment/InputEnvironment/export received JSON (unformatted).\n");
+        }
+        cJSON_Delete(json);
+    } else {
+        printf("/environment/InputEnvironment/export received invalid JSON. Raw body:%s\n", body_str);
+    }
+
+    free(body_str);
+
+    // Reply OK with CORS headers
+    mg_http_reply(
+        c,
+        200,
+        "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\n",
+        "{\"status\":\"ok\"}"
+    );
 }

@@ -86,6 +86,11 @@ class UIController {
     exportEnvironmentToConsole() {
         const data = this.inputEnvironment.json;
         this.dataService.exportToConsole(data);
+        // Also send to server
+        this.dataService.sendToServer(data).then((ok) => {
+            const msg = ok ? 'Exported to server.' : 'Export to server failed.';
+            this.canvasManager.showNotification(msg);
+        });
     }
 
     handleResetView() {
@@ -275,7 +280,10 @@ class UIController {
     }
 
     clearCanvas() {
-        this.inputEnvironment.clear();
+    // Destroy current environment and create a new one
+    const newEnv = new InputEnvironment();
+    this.inputEnvironment = newEnv;
+    this.canvasManager.inputEnvironment = newEnv;
         this.canvasManager.currentObstacle = null;
         this.isDrawingBoundary = false;
         this.isDrawingObstacle = false;
@@ -288,7 +296,7 @@ class UIController {
         this.updateDeleteModeUI();
         this.uiStateManager.updateCanvasCursor(this.canvasManager.canvas, this.uiStateManager.CURSORS.DEFAULT);
         
-        this.updateDisplay();
+    this.updateDisplay();
         this.canvasManager.draw();
     }
 

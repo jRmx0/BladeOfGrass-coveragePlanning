@@ -16,6 +16,7 @@ Purpose: Help AI agents be productive fast by capturing how this repo actually w
 
 ### Agent constraints (CI/local automation)
 - Only run `make build` when C sources are added or modified (e.g., files under `src/app/*.c` or vendored deps in `dependencies/**.c`). For frontend-only changes (JS/HTML/CSS), skip the build.
+- Before invoking `make build`, kill any currently running task/process (e.g., a previous server from `make run` or `make build-and-run`). On Windows you can also run `taskkill /F /IM main.exe`. This avoids file locks on Windows.
 - Do NOT run `make run` or `make build-and-run`.
 - Do NOT open a web browser; a human will do runtime/UI checks.
 - When C files change, treat a successful `make build` from the repo root as the verification step.

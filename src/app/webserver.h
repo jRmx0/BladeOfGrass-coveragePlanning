@@ -7,6 +7,7 @@ typedef enum {
     ROUTE_HOME,
     // /environment
     ROUTE_PATH_INPUT_ENVIRONMENT_SCRIPT,
+    ROUTE_PATH_INPUT_ENVIRONMENT_EXPORT,
     // /services
     ROUTE_PATH_COORDINATE_TRANSFORMER_SCRIPT,
     ROUTE_PATH_DATA_SERVICE_SCRIPT,
@@ -57,6 +58,9 @@ void handle_path_app_script_route(struct mg_connection *c, struct mg_http_messag
 
 // /template
 void handle_send_route(struct mg_connection *c, struct mg_http_message *hm);
+
+// /environment export
+void handle_path_input_environment_export_route(struct mg_connection *c, struct mg_http_message *hm);
 
 // /test
 void handle_test_route(struct mg_connection *c, struct mg_http_message *hm);

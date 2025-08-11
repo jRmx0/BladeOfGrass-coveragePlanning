@@ -18,8 +18,11 @@ class TestingController {
 
     // rectangle boundary with diamond obstacle in the middle
     drawRectangle() {
-        // Clear boundary and obstacles
-        this.inputEnvironment.clear();
+    // Always use the current environment (in case it was replaced)
+    const env = this.canvasManager?.inputEnvironment || this.inputEnvironment;
+    this.inputEnvironment = env;
+    // Clear boundary and obstacles on the current environment
+    env.clear();
         
         const rectanglePoints = [
             { x: -3, y: -2 },
@@ -31,7 +34,7 @@ class TestingController {
         // Add boundary vertices using the new structure
         rectanglePoints.forEach(point => {
             const vertex = new PolygonVertex(point.x, point.y);
-            this.inputEnvironment.boundaryPolygon.insertPolygonVertex(vertex);
+            env.boundaryPolygon.insertPolygonVertex(vertex);
         });
 
         // Create and add obstacle
@@ -48,13 +51,13 @@ class TestingController {
             obstaclePolygon.insertPolygonVertex(vertex);
         });
         
-        this.inputEnvironment.obstaclePolygonList.push(obstaclePolygon);
+    env.obstaclePolygonList.push(obstaclePolygon);
         
         // Update display through UIController to refresh all UI elements
         if (this.uiController && this.uiController.updateDisplay) {
             this.uiController.updateDisplay();
         }
         
-        this.canvasManager.draw();
+    this.canvasManager.draw();
     }
 }
