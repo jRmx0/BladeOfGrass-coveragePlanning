@@ -1,3 +1,5 @@
+// Orchestrates the coverage path planning process
+
 #ifndef COVERAGE_PATH_PLANNING_H
 #define COVERAGE_PATH_PLANNING_H
 

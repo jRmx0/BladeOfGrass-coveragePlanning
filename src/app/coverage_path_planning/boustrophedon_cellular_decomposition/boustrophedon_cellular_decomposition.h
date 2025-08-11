@@ -1,3 +1,5 @@
+// Generates events list, cells and adjacency graph using Boustrophedon Cellular Decomposition (BCD)
+
 #ifndef BOUSTROPHEDON_CELLULAR_DECOMPOSITION_H
 #define BOUSTROPHEDON_CELLULAR_DECOMPOSITION_H
 

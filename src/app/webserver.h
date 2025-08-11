@@ -38,6 +38,7 @@ void webserver_event_handler(struct mg_connection *c, int ev, void *ev_data);
 
 // /environment
 void handle_path_input_environment_script_route(struct mg_connection *c, struct mg_http_message *hm);
+void handle_path_input_environment_export_route(struct mg_connection *c, struct mg_http_message *hm);
 
 // /services
 void handle_path_coordinate_transformer_script_route(struct mg_connection *c, struct mg_http_message *hm);
@@ -58,9 +59,6 @@ void handle_path_app_script_route(struct mg_connection *c, struct mg_http_messag
 
 // /template
 void handle_send_route(struct mg_connection *c, struct mg_http_message *hm);
-
-// /environment export
-void handle_path_input_environment_export_route(struct mg_connection *c, struct mg_http_message *hm);
 
 // /test
 void handle_test_route(struct mg_connection *c, struct mg_http_message *hm);

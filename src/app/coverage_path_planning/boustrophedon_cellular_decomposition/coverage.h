@@ -1,3 +1,5 @@
+// Coverage path generation from decomposition cells and adjacency graph
+
 #ifndef BCD_COVERAGE_H
 #define BCD_COVERAGE_H
 

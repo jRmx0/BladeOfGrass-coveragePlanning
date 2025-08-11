@@ -210,6 +210,9 @@ route_type_t get_route_type(struct mg_str uri)
     if (mg_strcmp(uri, mg_str("/environment/InputEnvironment.js")) == 0) {
         return ROUTE_PATH_INPUT_ENVIRONMENT_SCRIPT;
     }
+    if (mg_strcmp(uri, mg_str("/environment/InputEnvironment/export")) == 0) {
+        return ROUTE_PATH_INPUT_ENVIRONMENT_EXPORT;
+    }
     
     if (mg_strcmp(uri, mg_str("/services/CoordinateTransformer.js")) == 0) {
         return ROUTE_PATH_COORDINATE_TRANSFORMER_SCRIPT;
@@ -248,9 +251,6 @@ route_type_t get_route_type(struct mg_str uri)
     
     if (mg_strcmp(uri, mg_str("/send")) == 0) {
         return ROUTE_SEND;
-    }
-    if (mg_strcmp(uri, mg_str("/environment/InputEnvironment/export")) == 0) {
-        return ROUTE_PATH_INPUT_ENVIRONMENT_EXPORT;
     }
     
     if (mg_strcmp(uri, mg_str("/test")) == 0) {
