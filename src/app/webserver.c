@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "webserver.h"
+#include "coverage_path_planning/coverage_path_planning.h"
 #include "../../dependencies/cJSON/cJSON.h"
 
 void webserver_init(struct mg_mgr *mgr, const char *listen_url)
@@ -282,9 +283,12 @@ void handle_path_input_environment_export_route(struct mg_connection *c, struct 
         char *pretty = cJSON_Print(json);
         if (pretty) {
             printf("/environment/InputEnvironment/export received JSON:\n%s\n", pretty);
+            // Call coverage path planning with the original JSON (not pretty)
+            coverage_path_planning_process(body_str);
             free(pretty);
         } else {
             printf("/environment/InputEnvironment/export received JSON (unformatted).\n");
+            coverage_path_planning_process(body_str);
         }
         cJSON_Delete(json);
     } else {
