@@ -19,8 +19,63 @@ void coverage_path_planning_process(const char *input_environment_json) {
 		return;
 	}
 
-	// TODO: Feed into BCD pipeline
+	// Generate BCD event list from input environment
+	bcd_event_t *event_list = NULL;
+	int event_count = 0;
 	
+	printf("coverage_path_planning: generating BCD event list\n");
+	rc = build_bcd_event_list(&env, &event_list, &event_count);
+	if (rc != 0) {
+		printf("coverage_path_planning: BCD event list generation failed (code %d)\n", rc);
+		free_input_environment(&env);
+		return;
+	}
+	
+	printf("coverage_path_planning: successfully generated %d events\n", event_count);
+	
+	// Pass event list to downstream BCD algorithms for cellular decomposition
+	printf("coverage_path_planning: passing event list to BCD cellular decomposition\n");
+	rc = bcd_process_event_list(event_list, event_count);
+	if (rc != 0) {
+		printf("coverage_path_planning: BCD cellular decomposition failed (code %d)\n", rc);
+		if (event_list != NULL) {
+			free(event_list);
+		}
+		free_input_environment(&env);
+		return;
+	}
+	
+	// Log events for verification
+	if (event_list != NULL && event_count > 0) {
+		printf("coverage_path_planning: event list preview (first 5 events):\n");
+		int preview_count = event_count < 5 ? event_count : 5;
+		for (int i = 0; i < event_count; i++) {
+			const char* type_str = "UNKNOWN";
+			switch (event_list[i].bcd_event_type) {
+				case BOUND_INIT: type_str = "BOUND_INIT"; break;
+				case BOUND_DEINIT: type_str = "BOUND_DEINIT"; break;
+				case BOUND_IN: type_str = "BOUND_IN"; break;
+				case BOUND_OUT: type_str = "BOUND_OUT"; break;
+				case BOUND_SIDE_IN: type_str = "BOUND_SIDE_IN"; break;
+				case BOUND_SIDE_OUT: type_str = "BOUND_SIDE_OUT"; break;
+				case IN: type_str = "IN"; break;
+				case SIDE_IN: type_str = "SIDE_IN"; break;
+				case OUT: type_str = "OUT"; break;
+				case SIDE_OUT: type_str = "SIDE_OUT"; break;
+				case FLOOR: type_str = "FLOOR"; break;
+				case CEILING: type_str = "CEILING"; break;
+			}
+			printf("  Event %d: (%.2f, %.2f) type=%s polygon=%s\n", 
+				   i, event_list[i].polygon_vertex.x, event_list[i].polygon_vertex.y,
+				   type_str, event_list[i].polygon_type == BOUNDARY ? "BOUNDARY" : "OBSTACLE");
+		}
+	}
+	
+	// Clean up event list memory
+	if (event_list != NULL) {
+		free(event_list);
+		event_list = NULL;
+	}
 
 	free_input_environment(&env);
 }
