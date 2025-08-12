@@ -268,7 +268,6 @@ route_type_t get_route_type(struct mg_str uri)
 
 void handle_path_input_environment_export_route(struct mg_connection *c, struct mg_http_message *hm)
 {
-    // Copy body to null-terminated string
     char *body_str = (char *) malloc(hm->body.len + 1);
     if (!body_str) {
         mg_http_reply(c, 500, "Access-Control-Allow-Origin: *\r\n", "{\"error\":\"OOM\"}");
@@ -277,27 +276,10 @@ void handle_path_input_environment_export_route(struct mg_connection *c, struct 
     memcpy(body_str, hm->body.buf, hm->body.len);
     body_str[hm->body.len] = '\0';
 
-    // Parse and pretty print JSON to server console
-    cJSON *json = cJSON_Parse(body_str);
-    if (json) {
-        char *pretty = cJSON_Print(json);
-        if (pretty) {
-            printf("/environment/InputEnvironment/export received JSON:\n%s\n", pretty);
-            // Call coverage path planning with the original JSON (not pretty)
-            coverage_path_planning_process(body_str);
-            free(pretty);
-        } else {
-            printf("/environment/InputEnvironment/export received JSON (unformatted).\n");
-            coverage_path_planning_process(body_str);
-        }
-        cJSON_Delete(json);
-    } else {
-        printf("/environment/InputEnvironment/export received invalid JSON. Raw body:%s\n", body_str);
-    }
+    coverage_path_planning_process(body_str);
 
     free(body_str);
 
-    // Reply OK with CORS headers
     mg_http_reply(
         c,
         200,
