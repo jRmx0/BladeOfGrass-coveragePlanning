@@ -11,29 +11,33 @@ static int parse_polygon_vertices_from_array(const cJSON *arr, polygon_t *polygo
 static int polygon_build_edges(polygon_t *polygon);
 
 static void log_event_list(const bcd_event_list_t *event_list);
+static const char *event_type_to_string(bcd_event_type_t t);
+static const char *polygon_type_to_string(polygon_type_t t);
+static char *serialize_event_list_json(const bcd_event_list_t *event_list);
 
-void coverage_path_planning_process(const char *input_environment_json)
+static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, int rc);
+
+char *coverage_path_planning_process(const char *input_environment_json)
 {
 	input_environment_t env;
-	int rc = parse_input_environment_json(input_environment_json, &env);
-	if (rc != 0)
-	{
-		printf("coverage_path_planning: parse failed (code %d)\n", rc);
-		return;
-	}
 
 	bcd_event_list_t event_list;
 	event_list.bcd_events = NULL;
 	event_list.length = 0;
+
+	int rc = parse_input_environment_json(input_environment_json, &env);
+	if (rc != 0)
+	{
+		printf("coverage_path_planning: parse failed (code %d)\n", rc);
+		return err_cleanup(&env, &event_list, rc);
+	}
 
 	printf("coverage_path_planning: generating BCD event list\n");
 	rc = build_bcd_event_list(&env, &event_list);
 	if (rc != 0)
 	{
 		printf("coverage_path_planning: BCD event list generation failed (code %d)\n", rc);
-		free_bcd_event_list(&event_list);
-		free_input_environment(&env);
-		return;
+		return err_cleanup(&env, &event_list, rc);
 	}
 
 	// printf("coverage_path_planning: passing event list to BCD cellular decomposition\n");
@@ -48,8 +52,12 @@ void coverage_path_planning_process(const char *input_environment_json)
 
 	log_event_list(&event_list);
 
+	char *json_out = serialize_event_list_json(&event_list);
+
 	free_bcd_event_list(&event_list);
 	free_input_environment(&env);
+
+	return json_out;
 }
 
 static int parse_input_environment_json(const char *json, input_environment_t *env)
@@ -128,6 +136,89 @@ done:
 		free_input_environment(env);
 	}
 	return status;
+}
+
+static const char *event_type_to_string(bcd_event_type_t t)
+{
+	switch (t)
+	{
+	case BOUND_INIT: return "BOUND_INIT";
+	case BOUND_DEINIT: return "BOUND_DEINIT";
+	case BOUND_IN: return "BOUND_IN";
+	case BOUND_OUT: return "BOUND_OUT";
+	case BOUND_SIDE_IN: return "BOUND_SIDE_IN";
+	case BOUND_SIDE_OUT: return "BOUND_SIDE_OUT";
+	case IN: return "IN";
+	case SIDE_IN: return "SIDE_IN";
+	case OUT: return "OUT";
+	case SIDE_OUT: return "SIDE_OUT";
+	case FLOOR: return "FLOOR";
+	case CEILING: return "CEILING";
+	default: return "UNKNOWN";
+	}
+}
+
+static const char *polygon_type_to_string(polygon_type_t t)
+{
+	switch (t)
+	{
+	case BOUNDARY: return "BOUNDARY";
+	case OBSTACLE: return "OBSTACLE";
+	default: return "UNKNOWN";
+	}
+}
+
+static char *serialize_event_list_json(const bcd_event_list_t *event_list)
+{
+	cJSON *root = cJSON_CreateObject();
+	cJSON_AddStringToObject(root, "status", "ok");
+	cJSON *arr = cJSON_CreateArray();
+	cJSON_AddItemToObject(root, "event_list", arr);
+
+	if (event_list && event_list->bcd_events && event_list->length > 0)
+	{
+		for (int i = 0; i < event_list->length; ++i)
+		{
+			const bcd_event_t *ev = &event_list->bcd_events[i];
+			cJSON *jev = cJSON_CreateObject();
+			cJSON_AddStringToObject(jev, "polygon_type", polygon_type_to_string(ev->polygon_type));
+			cJSON *jv = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jv, "x", ev->polygon_vertex.x);
+			cJSON_AddNumberToObject(jv, "y", ev->polygon_vertex.y);
+			cJSON_AddItemToObject(jev, "vertex", jv);
+			cJSON_AddStringToObject(jev, "event_type", event_type_to_string(ev->bcd_event_type));
+
+			// floor edge
+			cJSON *jfloor = cJSON_CreateObject();
+			cJSON *jfb = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jfb, "x", ev->floor_edge.begin.x);
+			cJSON_AddNumberToObject(jfb, "y", ev->floor_edge.begin.y);
+			cJSON_AddItemToObject(jfloor, "begin", jfb);
+			cJSON *jfe = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jfe, "x", ev->floor_edge.end.x);
+			cJSON_AddNumberToObject(jfe, "y", ev->floor_edge.end.y);
+			cJSON_AddItemToObject(jfloor, "end", jfe);
+			cJSON_AddItemToObject(jev, "floor_edge", jfloor);
+
+			// ceiling edge
+			cJSON *jceil = cJSON_CreateObject();
+			cJSON *jcb = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jcb, "x", ev->ceiling_edge.begin.x);
+			cJSON_AddNumberToObject(jcb, "y", ev->ceiling_edge.begin.y);
+			cJSON_AddItemToObject(jceil, "begin", jcb);
+			cJSON *jce = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jce, "x", ev->ceiling_edge.end.x);
+			cJSON_AddNumberToObject(jce, "y", ev->ceiling_edge.end.y);
+			cJSON_AddItemToObject(jceil, "end", jce);
+			cJSON_AddItemToObject(jev, "ceiling_edge", jceil);
+
+			cJSON_AddItemToArray(arr, jev);
+		}
+	}
+
+	char *json = cJSON_PrintUnformatted(root);
+	cJSON_Delete(root);
+	return json; // caller must free
 }
 
 static int parse_polygon_vertices_from_array(const cJSON *arr, polygon_t *polygon, polygon_winding_t winding)
@@ -266,6 +357,19 @@ static void log_event_list(const bcd_event_list_t *event_list)
 				   type_str, event_list->bcd_events[i].polygon_type == BOUNDARY ? "BOUNDARY" : "OBSTACLE");
 		}
 	}
+}
+
+static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, int rc)
+{
+	free_bcd_event_list(event_list);
+	free_input_environment(env);
+	cJSON *err = cJSON_CreateObject();
+	cJSON_AddStringToObject(err, "status", "error");
+	cJSON_AddNumberToObject(err, "code", rc);
+	cJSON_AddStringToObject(err, "message", "event list generation failed");
+	char *out = cJSON_PrintUnformatted(err);
+	cJSON_Delete(err);
+	return out;
 }
 
 void free_polygon(polygon_t *polygon)

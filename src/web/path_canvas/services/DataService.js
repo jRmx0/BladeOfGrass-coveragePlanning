@@ -20,7 +20,11 @@ class DataService {
                 throw new Error(`Server responded ${res.status}`);
             }
             const json = await res.json().catch(() => ({}));
-            console.log('Export response:', json);
+            if (json && Array.isArray(json.event_list)) {
+                console.log('Event list received:', json);
+            } else {
+                console.log('Export response:', json);
+            }
             return true;
         } catch (err) {
             console.error('Failed to export to server:', err);

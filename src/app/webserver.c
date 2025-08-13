@@ -276,14 +276,26 @@ void handle_path_input_environment_export_route(struct mg_connection *c, struct 
     memcpy(body_str, hm->body.buf, hm->body.len);
     body_str[hm->body.len] = '\0';
 
-    coverage_path_planning_process(body_str);
+    char *result_json = coverage_path_planning_process(body_str);
 
     free(body_str);
 
-    mg_http_reply(
-        c,
-        200,
-        "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\n",
-        "{\"status\":\"ok\"}"
-    );
+    const char *headers = "Content-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: POST, GET, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\n";
+    if (result_json) {
+        mg_http_reply(
+            c,
+            200,
+            headers,
+            "%s",
+            result_json
+        );
+        free(result_json);
+    } else {
+        mg_http_reply(
+            c,
+            500,
+            headers,
+            "{\"status\":\"error\",\"message\":\"no result\"}"
+        );
+    }
 }
