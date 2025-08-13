@@ -8,34 +8,60 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-static int preallocate_event_list(const input_environment_t *env, bcd_event_list_t *event_list);
-static int find_leftmost_boundary_event(const input_environment_t *env, bcd_event_list_t *event_list);
-static int push_to_bcd_event_list(bcd_event_list_t *event_list, bcd_event_t event);
+static int preallocate_event_list(const input_environment_t *env,
+                                  bcd_event_list_t *event_list);
+
+static int find_polygon_events(const polygon_t polygon,
+                                bcd_event_list_t *event_list);
+
+static int find_leftmost_event(const polygon_t polygon,
+                               bcd_event_list_t *event_list);
+
+static int find_common_event(const polygon_t polygon,
+                             bcd_event_list_t *event_list,
+                             int common_index);
+
+static int push_to_bcd_event_list(bcd_event_list_t *event_list,
+                                  bcd_event_t event);
+
 static bcd_event_t fill_bcd_event(polygon_type_t polygon_type,
                                   polygon_vertex_t polygon_vertex,
                                   bcd_event_type_t bcd_event_type,
                                   polygon_edge_t floor_edge,
                                   polygon_edge_t ceiling_edge);
+
 static float compute_vector_angle_degrees(polygon_edge_t poly_edge);
 
-int build_bcd_event_list(const input_environment_t *env, bcd_event_list_t *event_list)
+int build_bcd_event_list(const input_environment_t *env,
+                         bcd_event_list_t *event_list)
 {
+    int rc = 0;
+
     if (preallocate_event_list(env, event_list) != 0)
     {
         return -4;
     }
 
-    int leftmost_index = find_leftmost_boundary_event(env, event_list);
-    if (leftmost_index < 0)
+    rc = find_polygon_events(env->boundary, event_list);
+    if (rc != 0)
     {
-        free_bcd_event_list(event_list);
-        return leftmost_index;
+        return rc;
+    }
+
+    for (int i = 0; i < env->obstacle_count; i++)
+    {
+        rc = find_polygon_events(env->obstacles[i], event_list);
+        if (rc != 0)
+        {
+            return rc;
+        }
     }
 
     return 0;
 }
 
-static int preallocate_event_list(const input_environment_t *env, bcd_event_list_t *event_list)
+static int preallocate_event_list(const input_environment_t *env,
+                                  bcd_event_list_t *event_list)
 {
     int total = (int)env->boundary.vertex_count;
     for (uint32_t i = 0; i < env->obstacle_count; ++i)
@@ -62,19 +88,45 @@ static int preallocate_event_list(const input_environment_t *env, bcd_event_list
     return 0;
 }
 
-static int find_leftmost_boundary_event(const input_environment_t *env, bcd_event_list_t *event_list)
+static int find_polygon_events(const polygon_t polygon,
+                               bcd_event_list_t *event_list)
 {
-    if (!env || env->boundary.vertex_count == 0 || env->boundary.vertices == NULL)
+    int leftmost_index = find_leftmost_event(polygon, event_list);
+    if (leftmost_index < 0)
+    {
+        free_bcd_event_list(event_list);
+        return leftmost_index;
+    }
+
+    for (int i = (leftmost_index + 1) % (int)polygon.vertex_count;
+         i != leftmost_index;
+         i = (i + 1) % (int)polygon.vertex_count)
+    {
+        int rc = find_common_event(polygon, event_list, i);
+        if (rc != 0)
+        {
+            free_bcd_event_list(event_list);
+            return rc;
+        }
+    }
+
+    return 0;
+}
+
+static int find_leftmost_event(const polygon_t polygon,
+                               bcd_event_list_t *event_list)
+{
+    if (polygon.vertex_count == 0 || polygon.vertices == NULL)
     {
         return -1;
     }
 
     int leftmost_index = 0;
-    float min_x = env->boundary.vertices[0].x;
+    float min_x = polygon.vertices[0].x;
 
-    for (int i = 1; i < (int)env->boundary.vertex_count; i++)
+    for (int i = 1; i < (int)polygon.vertex_count; i++)
     {
-        float x = env->boundary.vertices[i].x;
+        float x = polygon.vertices[i].x;
         if (x < min_x)
         {
             min_x = x;
@@ -82,14 +134,20 @@ static int find_leftmost_boundary_event(const input_environment_t *env, bcd_even
         }
     }
 
+    polygon_type_t polygon_type;
+    polygon_type = polygon.winding == POLYGON_WINDING_CW ? BOUNDARY : OBSTACLE;
+    bcd_event_type_t event_type;
+    event_type = polygon_type == BOUNDARY ? BOUND_IN : IN;
+
     bcd_event_t leftmost_event;
+
     // Per contract: floor_edge = edge terminating from vertex i (edges[i-1])
     //               ceiling_edge = edge emanating at vertex i (edges[i])
-    leftmost_event = fill_bcd_event(BOUNDARY,
-                                    env->boundary.vertices[leftmost_index],
-                                    BOUND_INIT,
-                                    env->boundary.edges[(leftmost_index + env->boundary.vertex_count - 1) % env->boundary.vertex_count],
-                                    env->boundary.edges[leftmost_index]);
+    leftmost_event = fill_bcd_event(polygon_type,
+                                    polygon.vertices[leftmost_index],
+                                    event_type,
+                                    polygon.edges[(leftmost_index + polygon.vertex_count - 1) % polygon.vertex_count],
+                                    polygon.edges[leftmost_index]);
 
     if (push_to_bcd_event_list(event_list, leftmost_event) != 0)
     {
@@ -97,6 +155,14 @@ static int find_leftmost_boundary_event(const input_environment_t *env, bcd_even
     }
 
     return leftmost_index;
+}
+
+static int find_common_event(const polygon_t polygon,
+                             bcd_event_list_t *event_list,
+                             int common_index)
+{
+
+    return 0;
 }
 
 static float compute_vector_angle_degrees(polygon_edge_t poly_edge)
@@ -123,7 +189,8 @@ static float compute_vector_angle_degrees(polygon_edge_t poly_edge)
     return angle_degrees;
 }
 
-static int push_to_bcd_event_list(bcd_event_list_t *event_list, bcd_event_t event)
+static int push_to_bcd_event_list(bcd_event_list_t *event_list,
+                                  bcd_event_t event)
 {
     if (!event_list)
         return -1;

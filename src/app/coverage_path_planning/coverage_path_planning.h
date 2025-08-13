@@ -19,8 +19,8 @@ typedef struct
 
 typedef enum {
     POLYGON_WINDING_UNKNOWN = 0,
-    POLYGON_WINDING_CW = 1,
-    POLYGON_WINDING_CCW = 2
+    POLYGON_WINDING_CW = 1,         // Boundary winding type
+    POLYGON_WINDING_CCW = 2         // Obstacle winding type
 } polygon_winding_t;
 
 typedef enum {
