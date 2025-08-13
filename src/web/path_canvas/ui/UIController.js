@@ -32,8 +32,31 @@ class UIController {
         }
         // Add vertex numbers toggle (switch) if present
         const toggleVertexSwitch = document.getElementById('toggleVertexNumbers');
+        const toggleEventsSwitch = document.getElementById('toggleEvents');
         if (toggleVertexSwitch) {
-            toggleVertexSwitch.addEventListener('change', (e) => this.toggleVertexNumbers(e.target.checked));
+            toggleVertexSwitch.addEventListener('change', (e) => {
+                // If enabling vertex numbers, disable events
+                if (e.target.checked) {
+                    if (toggleEventsSwitch && toggleEventsSwitch.checked) {
+                        toggleEventsSwitch.checked = false;
+                        this.canvasManager.showEvents = false;
+                    }
+                }
+                this.toggleVertexNumbers(e.target.checked);
+            });
+        }
+        if (toggleEventsSwitch) {
+            toggleEventsSwitch.addEventListener('change', (e) => {
+                // If enabling events, disable vertex numbers
+                if (e.target.checked) {
+                    if (toggleVertexSwitch && toggleVertexSwitch.checked) {
+                        toggleVertexSwitch.checked = false;
+                        this.toggleVertexNumbers(false);
+                    }
+                }
+                this.canvasManager.showEvents = !!e.target.checked;
+                this.canvasManager.draw();
+            });
         }
         document.getElementById('clearCanvas').addEventListener('click', () => { this.cancelAllModes(); this.clearCanvas(); });
         document.getElementById('resetView').addEventListener('click', () => { this.cancelAllModes(); this.handleResetView(); });
@@ -87,7 +110,15 @@ class UIController {
         const data = this.inputEnvironment.json;
         this.dataService.exportToConsole(data);
         // Also send to server
-        this.dataService.sendToServer(data).then((ok) => {
+        this.dataService.sendToServer(data).then((resp) => {
+            let ok = resp && resp.status !== 'error';
+            // Store events if present
+            if (resp && Array.isArray(resp.event_list)) {
+                this.canvasManager.setEvents(resp.event_list);
+                // Enable events toggle
+                const es = document.getElementById('toggleEvents');
+                if (es) es.disabled = false;
+            }
             const msg = ok ? 'Exported to server.' : 'Export to server failed.';
             this.canvasManager.showNotification(msg);
         });
@@ -290,6 +321,15 @@ class UIController {
         this.isDeletingObstacle = false;
         this.canvasManager.isDrawingBoundary = false;
         this.canvasManager.isDrawingObstacle = false;
+
+        // Clear event markers and reset toggle state
+        this.canvasManager.setEvents([]);
+        this.canvasManager.showEvents = false;
+        const eventsToggle = document.getElementById('toggleEvents');
+        if (eventsToggle) {
+            eventsToggle.checked = false;
+            eventsToggle.disabled = true; // disabled until next export provides events
+        }
         
         // Reset UI using state manager
         this.uiStateManager.resetAllButtons();

@@ -25,10 +25,10 @@ class DataService {
             } else {
                 console.log('Export response:', json);
             }
-            return true;
+            return json;
         } catch (err) {
             console.error('Failed to export to server:', err);
-            return false;
+            return { status: 'error', message: String(err) };
         }
     }
 }

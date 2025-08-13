@@ -16,6 +16,8 @@ class CanvasManager {
         this.currentObstacle = null; // Track current obstacle being drawn
     this.showVertexNumbers = false; // debug toggle
     this.vertexScale = 1; // scales point radius when showVertexNumbers is on
+    this.showEvents = false; // debug toggle for events
+    this.events = []; // last received events from backend
         
         // Notification system
         this.notification = null;
@@ -54,10 +56,55 @@ class CanvasManager {
         // Draw current obstacle being built
         if (this.currentObstacle) this.drawCurrentObstacle();
         
-        // Draw notification if present
+    // Draw events overlay (if enabled)
+    if (this.showEvents && this.events && this.events.length > 0) this.drawEvents();
+
+    // Draw notification if present
         if (this.notification) this.drawNotification();
         
         this.ctx.restore();
+    }
+
+    setEvents(eventsArray) {
+        if (Array.isArray(eventsArray)) {
+            this.events = eventsArray;
+        } else {
+            this.events = [];
+        }
+        this.draw();
+    }
+
+    drawEvents() {
+        const r = Math.max(3, 4 / this.scale);
+        for (const ev of this.events) {
+            if (!ev || !ev.vertex) continue;
+            const x = ev.vertex.x * this.pixelsPerMeter;
+            const y = ev.vertex.y * this.pixelsPerMeter;
+
+            // Color per event type
+            const t = ev.event_type || '';
+            let color = '#8e44ad'; // default purple
+            if (t === 'IN' || t === 'BOUND_IN' || t === 'SIDE_IN' || t === 'BOUND_SIDE_IN') color = '#2ecc71';
+            else if (t === 'OUT' || t === 'BOUND_OUT' || t === 'SIDE_OUT' || t === 'BOUND_SIDE_OUT') color = '#e74c3c';
+            else if (t === 'FLOOR') color = '#3498db';
+            else if (t === 'CEILING') color = '#f1c40f';
+            else if (t === 'BOUND_INIT') color = '#2ecc71';
+            else if (t === 'BOUND_DEINIT') color = '#e74c3c';
+
+            // Draw marker
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, r, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Optional: small label
+            const label = t.replace('BOUND_', 'B_');
+            this.ctx.font = `${Math.max(7, Math.round(9 / this.scale))}px Segoe UI, Arial`;
+            this.ctx.textAlign = 'left';
+            this.ctx.textBaseline = 'top';
+            this.ctx.fillStyle = color;
+            this.ctx.fillText(label, x + r + 2, y + r + 2);
+        }
     }
 
     drawObstacles() {
