@@ -53,9 +53,7 @@ typedef struct
 
 void coverage_path_planning_process(const char *input_environment_json);
 
-int parse_input_environment_json(const char *json, input_environment_t *out);
+void free_polygon(polygon_t *polygon);
 void free_input_environment(input_environment_t *env);
-
-int polygon_build_edges(polygon_t *poly);
 
 #endif // COVERAGE_PATH_PLANNING_H

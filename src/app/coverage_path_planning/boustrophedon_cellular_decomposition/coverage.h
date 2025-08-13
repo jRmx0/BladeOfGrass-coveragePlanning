@@ -12,7 +12,7 @@ typedef struct {
 } bcd_cell_t;
 
 // Connection point function to pass event list to downstream BCD algorithms
-int bcd_process_event_list(bcd_event_t *event_list, int event_count);
+int bcd_process_event_list(bcd_event_list_t event_list);
 
 void bcd_compute(void);
 
