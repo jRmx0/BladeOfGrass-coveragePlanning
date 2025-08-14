@@ -186,12 +186,12 @@ static int find_common_event(const polygon_t polygon,
         floor_edge_index = terminating;
         ceiling_edge_index = emanating;
     }
-    // else if (side_in_event(polygon, vertex_index, terminating, emanating))
-    // {
-    //     event_type = SIDE_IN;
-    //     floor_edge_index = terminating;
-    //     ceiling_edge_index = emanating;
-    // }
+    else if (side_in_event(polygon, vertex_index, terminating, emanating))
+    {
+        event_type = SIDE_IN;
+        floor_edge_index = terminating;
+        ceiling_edge_index = emanating;
+    }
     // else if (out_event(polygon, vertex_index, emanating, terminating))
     // {
     //     event_type = OUT;
@@ -241,13 +241,6 @@ static int find_common_event(const polygon_t polygon,
 
 static bool in_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
 {
-    if (poly.edge_count == 0 || !poly.edges)
-        return false;
-    if (floor_edge_index < 0 || ceiling_edge_index < 0)
-        return false;
-    if (floor_edge_index >= (int)poly.edge_count || ceiling_edge_index >= (int)poly.edge_count)
-        return false;
-
     float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
     float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
 
@@ -268,14 +261,29 @@ static bool in_event(const polygon_t poly, int vertex_index, int floor_edge_inde
 
 static bool side_in_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
 {
+    float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
+    float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
+
+    if (180.0f <= floor_angle && floor_angle < 270.0f)
+    {
+        float max_ceil_angle = floor_angle - 180.0f;
+        return ((0.0f <= ceil_angle && ceil_angle < max_ceil_angle) ||
+                (270.0f < ceil_angle && ceil_angle <= 360.0f));
+    }
+
+    return false;
 }
 
 static bool out_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
 {
+    float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
+    float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
 }
 
 static bool side_out_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
 {
+    float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
+    float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
 }
 
 static bool floor_event(const polygon_t poly, int vertex_index, int floor_edge_index)
