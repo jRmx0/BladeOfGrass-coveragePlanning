@@ -50,7 +50,7 @@ char *coverage_path_planning_process(const char *input_environment_json)
 	// 	return;
 	// }
 
-	// log_event_list(&event_list);
+	log_event_list(&event_list);
 
 	char *json_out = serialize_event_list_json(&event_list);
 

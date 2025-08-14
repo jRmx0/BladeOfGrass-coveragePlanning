@@ -22,6 +22,9 @@ static int find_common_event(const polygon_t polygon,
                              bcd_event_list_t *event_list,
                              int vertex_index);
 
+static void sort_event_list(bcd_event_list_t *event_list);
+static int compare_events(const void *a, const void *b);
+
 static bool in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
 static bool side_in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
 static bool out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
@@ -64,6 +67,8 @@ int build_bcd_event_list(const input_environment_t *env,
             return rc;
         }
     }
+
+    sort_event_list(event_list);
 
     return 0;
 }
@@ -147,7 +152,7 @@ static int find_leftmost_event(const polygon_t polygon,
     polygon_type_t polygon_type;
     polygon_type = polygon.winding == POLYGON_WINDING_CW ? BOUNDARY : OBSTACLE;
     bcd_event_type_t event_type;
-    event_type = polygon_type == BOUNDARY ? B_INIT : IN;
+    event_type = polygon_type == BOUNDARY ? SIDE_IN : IN;
 
     leftmost_event = fill_bcd_event(polygon_type,
                                     polygon.vertices[leftmost_index],
@@ -239,6 +244,26 @@ static int find_common_event(const polygon_t polygon,
     }
 
     return 0;
+}
+static void sort_event_list(bcd_event_list_t *event_list)
+{
+    if (!event_list || event_list->length <= 1)
+        return;
+
+    qsort(event_list->bcd_events, event_list->length, sizeof(bcd_event_t), compare_events);
+}
+
+static int compare_events(const void *a, const void *b)
+{
+    const bcd_event_t *event_a = (const bcd_event_t *)a;
+    const bcd_event_t *event_b = (const bcd_event_t *)b;
+    
+    if (event_a->polygon_vertex.x < event_b->polygon_vertex.x)
+        return -1;
+    else if (event_a->polygon_vertex.x > event_b->polygon_vertex.x)
+        return 1;
+    else
+        return 0;
 }
 
 static bool in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
