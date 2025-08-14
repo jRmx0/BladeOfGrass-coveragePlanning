@@ -198,12 +198,12 @@ static int find_common_event(const polygon_t polygon,
         floor_edge_index = emanating;
         ceiling_edge_index = terminating;
     }
-    // else if (side_out_event(polygon, vertex_index, emanating, terminating))
-    // {
-    //     event_type = SIDE_OUT;
-    //     floor_edge_index = emanating;
-    //     ceiling_edge_index = terminating;
-    // }
+    else if (side_out_event(polygon, vertex_index, emanating, terminating))
+    {
+        event_type = SIDE_OUT;
+        floor_edge_index = emanating;
+        ceiling_edge_index = terminating;
+    }
     // else if (floor_event(polygon, vertex_index, terminating))
     // {
     //     event_type = FLOOR;
@@ -264,6 +264,11 @@ static bool side_in_event(const polygon_t poly, int vertex_index, int floor_edge
     float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
     float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
 
+    if (90.0f < floor_angle && floor_angle <= 180.0f)
+    {
+        float max_ceil_angle = floor_angle + 180.0f;
+        return (270.0f <= ceil_angle && ceil_angle < max_ceil_angle);
+    }
     if (180.0f <= floor_angle && floor_angle < 270.0f)
     {
         float max_ceil_angle = floor_angle - 180.0f;
@@ -298,6 +303,20 @@ static bool side_out_event(const polygon_t poly, int vertex_index, int floor_edg
 {
     float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
     float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
+
+    if (0.0f <= ceil_angle && ceil_angle < 90.0f)
+    {
+        float max_floor_angle = ceil_angle + 180.0f;
+        return (90.0f < floor_angle && floor_angle < max_floor_angle);
+    }
+
+    if (270.0f < ceil_angle <= 360.0f)
+    {
+        float max_floor_angle = ceil_angle - 180.0f;
+        return (90.0f < floor_angle && floor_angle < max_floor_angle);
+    }
+
+    return false;
 }
 
 static bool floor_event(const polygon_t poly, int vertex_index, int floor_edge_index)
