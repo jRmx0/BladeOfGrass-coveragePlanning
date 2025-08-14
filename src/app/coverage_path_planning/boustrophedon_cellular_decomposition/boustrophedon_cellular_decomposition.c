@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "boustrophedon_cellular_decomposition.h"
 
 #ifndef M_PI
@@ -12,14 +13,21 @@ static int preallocate_event_list(const input_environment_t *env,
                                   bcd_event_list_t *event_list);
 
 static int find_polygon_events(const polygon_t polygon,
-                                bcd_event_list_t *event_list);
+                               bcd_event_list_t *event_list);
 
 static int find_leftmost_event(const polygon_t polygon,
                                bcd_event_list_t *event_list);
 
 static int find_common_event(const polygon_t polygon,
                              bcd_event_list_t *event_list,
-                             int common_index);
+                             int vertex_index);
+
+static bool in_event(const polygon_t polygon, int vertex_index, int floor_edge_index, int ceiling_edge_index);
+static bool side_in_event(const polygon_t polygon, int vertex_index, int floor_edge_index, int ceiling_edge_index);
+static bool out_event(const polygon_t polygon, int vertex_index, int floor_edge_index, int ceiling_edge_index);
+static bool side_out_event(const polygon_t polygon, int vertex_index, int floor_edge_index, int ceiling_edge_index);
+static bool floor_event(const polygon_t polygon, int vertex_index, int floor_edge_index);
+static bool ceiling_event(const polygon_t polygon, int vertex_index, int ceiling_edge_index);
 
 static int push_to_bcd_event_list(bcd_event_list_t *event_list,
                                   bcd_event_t event);
@@ -31,6 +39,7 @@ static bcd_event_t fill_bcd_event(polygon_type_t polygon_type,
                                   polygon_edge_t ceiling_edge);
 
 static float compute_vector_angle_degrees(polygon_edge_t poly_edge);
+static void log_vertex_with_angles(const polygon_t poly, polygon_vertex_t v, int f_e_i, float floor_angle, int c_e_i, float ceil_angle);
 
 int build_bcd_event_list(const input_environment_t *env,
                          bcd_event_list_t *event_list)
@@ -134,15 +143,13 @@ static int find_leftmost_event(const polygon_t polygon,
         }
     }
 
+    bcd_event_t leftmost_event;
+
     polygon_type_t polygon_type;
     polygon_type = polygon.winding == POLYGON_WINDING_CW ? BOUNDARY : OBSTACLE;
     bcd_event_type_t event_type;
-    event_type = polygon_type == BOUNDARY ? BOUND_IN : IN;
+    event_type = polygon_type == BOUNDARY ? BOUND_INIT : IN;
 
-    bcd_event_t leftmost_event;
-
-    // Per contract: floor_edge = edge terminating from vertex i (edges[i-1])
-    //               ceiling_edge = edge emanating at vertex i (edges[i])
     leftmost_event = fill_bcd_event(polygon_type,
                                     polygon.vertices[leftmost_index],
                                     event_type,
@@ -159,10 +166,124 @@ static int find_leftmost_event(const polygon_t polygon,
 
 static int find_common_event(const polygon_t polygon,
                              bcd_event_list_t *event_list,
-                             int common_index)
+                             int vertex_index)
 {
+    if (polygon.vertex_count == 0 || polygon.vertices == NULL)
+    {
+        return -1;
+    }
+
+    bcd_event_type_t event_type;
+    int floor_edge_index = -1;
+    int ceiling_edge_index = -1;
+
+    int emanating = vertex_index;
+    int terminating = (vertex_index + polygon.vertex_count - 1) % polygon.vertex_count;
+
+    if (in_event(polygon, vertex_index, terminating, emanating))
+    {
+        event_type = IN;
+        floor_edge_index = terminating;
+        ceiling_edge_index = emanating;
+    }
+    // else if (side_in_event(polygon, vertex_index, terminating, emanating))
+    // {
+    //     event_type = SIDE_IN;
+    //     floor_edge_index = terminating;
+    //     ceiling_edge_index = emanating;
+    // }
+    // else if (out_event(polygon, vertex_index, emanating, terminating))
+    // {
+    //     event_type = OUT;
+    //     floor_edge_index = emanating;
+    //     ceiling_edge_index = terminating;
+    // }
+    // else if (side_out_event(polygon, vertex_index, emanating, terminating))
+    // {
+    //     event_type = SIDE_OUT;
+    //     floor_edge_index = emanating;
+    //     ceiling_edge_index = terminating;
+    // }
+    // else if (floor_event(polygon, vertex_index, terminating))
+    // {
+    //     event_type = FLOOR;
+    //     floor_edge_index = terminating;
+    // }
+    // else if (ceiling_event(polygon, vertex_index, emanating))
+    // {
+    //     event_type = CEILING;
+    //     ceiling_edge_index = emanating;
+    // }
+    else
+    {
+        // No matching event type for this vertex; do not push any event
+        return 0;
+    }
+
+    bcd_event_t common_event;
+
+    polygon_type_t polygon_type;
+    polygon_type = polygon.winding == POLYGON_WINDING_CW ? BOUNDARY : OBSTACLE;
+
+    common_event = fill_bcd_event(polygon_type,
+                                  polygon.vertices[vertex_index],
+                                  event_type,
+                                  floor_edge_index > -1 ? polygon.edges[floor_edge_index] : (polygon_edge_t){0},
+                                  ceiling_edge_index > -1 ? polygon.edges[ceiling_edge_index] : (polygon_edge_t){0});
+
+    if (push_to_bcd_event_list(event_list, common_event) != 0)
+    {
+        return -2;
+    }
 
     return 0;
+}
+
+static bool in_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
+{
+    if (poly.edge_count == 0 || !poly.edges)
+        return false;
+    if (floor_edge_index < 0 || ceiling_edge_index < 0)
+        return false;
+    if (floor_edge_index >= (int)poly.edge_count || ceiling_edge_index >= (int)poly.edge_count)
+        return false;
+
+    float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
+    float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
+
+    if (90.0f < floor_angle && floor_angle <= 180.0f)
+    {
+        float min_ceil_angle = floor_angle + 180.0f;
+        return ((0.0f <= ceil_angle && ceil_angle < 90.0f) ||
+                (min_ceil_angle < ceil_angle && ceil_angle <= 360.0f));
+    }
+    else if (180.0f < floor_angle && floor_angle < 270.0f)
+    {
+        float min_ceil_angle = floor_angle - 180.0f;
+        return (min_ceil_angle < ceil_angle && ceil_angle < 90.0f);
+    }
+
+    return false;
+}
+
+static bool side_in_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
+{
+}
+
+static bool out_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
+{
+}
+
+static bool side_out_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
+{
+}
+
+static bool floor_event(const polygon_t poly, int vertex_index, int floor_edge_index)
+{
+}
+
+static bool ceiling_event(const polygon_t poly, int vertex_index, int ceiling_edge_index)
+{
 }
 
 static float compute_vector_angle_degrees(polygon_edge_t poly_edge)
@@ -187,6 +308,15 @@ static float compute_vector_angle_degrees(polygon_edge_t poly_edge)
         angle_degrees -= 360.0f;
     }
     return angle_degrees;
+}
+
+// log_vertex_with_angles(poly, poly.vertices[vertex_index], floor_edge_index, floor_angle, ceiling_edge_index, ceil_angle);
+static void log_vertex_with_angles(const polygon_t poly, polygon_vertex_t v, int f_e_i, float floor_angle, int c_e_i, float ceil_angle)
+{
+    printf("BCD debug: vertex=(%.3f, %.3f)\n          f_e_b=(%.3f, %.3f), f_e_e=(%.3f, %.3f), f_a=%.2f deg,\n          c_e_b=(%.3f, %.3f), c_e_e=(%.3f, %.3f), c_a=%.2f deg\n",
+           v.x, v.y,
+           poly.edges[f_e_i].begin.x, poly.edges[f_e_i].begin.y, poly.edges[f_e_i].end.x, poly.edges[f_e_i].end.y, floor_angle,
+           poly.edges[c_e_i].begin.x, poly.edges[c_e_i].begin.y, poly.edges[c_e_i].end.y, poly.edges[c_e_i].end.y, ceil_angle);
 }
 
 static int push_to_bcd_event_list(bcd_event_list_t *event_list,

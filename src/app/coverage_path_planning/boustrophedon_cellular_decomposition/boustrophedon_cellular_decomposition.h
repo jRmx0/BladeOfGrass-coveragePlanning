@@ -36,8 +36,8 @@ typedef enum {
                         // (ceiling_edge_vector_angle ∈ (270, 360] AND
                         // floor_edge_vector_angle ∈ ((ceiling_edge_vector_angle - 180), 270)) 
     
-    FLOOR,              // event between OUT and IN (traced along the polygon verticies in winding order); event has only floor_edge
-    CEILING             // event between IN and OUT (traced along the polygon verticies in winding order); event has only ceiling_edge
+    FLOOR,              // event between OUT and IN (traced along the polygon verticies in winding order); floor event has only floor_edge
+    CEILING             // event between IN and OUT (traced along the polygon verticies in winding order); ceiling event has only ceiling_edge
 } bcd_event_type_t;
 
 typedef struct {
