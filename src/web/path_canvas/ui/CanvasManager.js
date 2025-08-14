@@ -84,12 +84,12 @@ class CanvasManager {
             // Color per event type
             const t = ev.event_type || '';
             let color = '#8e44ad'; // default purple
-            if (t === 'IN' || t === 'BOUND_IN' || t === 'SIDE_IN' || t === 'BOUND_SIDE_IN') color = '#2ecc71';
-            else if (t === 'OUT' || t === 'BOUND_OUT' || t === 'SIDE_OUT' || t === 'BOUND_SIDE_OUT') color = '#e74c3c';
+            if (t === 'IN' || t === 'B_IN' || t === 'SIDE_IN' || t === 'B_SIDE_IN') color = '#2ecc71';
+            else if (t === 'OUT' || t === 'B_OUT' || t === 'SIDE_OUT' || t === 'B_SIDE_OUT') color = '#e74c3c';
             else if (t === 'FLOOR') color = '#3498db';
             else if (t === 'CEILING') color = '#f1c40f';
-            else if (t === 'BOUND_INIT') color = '#2ecc71';
-            else if (t === 'BOUND_DEINIT') color = '#e74c3c';
+            else if (t === 'B_INIT') color = '#2ecc71';
+            else if (t === 'B_DEINIT') color = '#e74c3c';
 
             // Draw marker
             this.ctx.fillStyle = color;
@@ -98,12 +98,11 @@ class CanvasManager {
             this.ctx.fill();
 
             // Optional: small label
-            const label = t.replace('BOUND_', 'B_');
             this.ctx.font = `${Math.max(7, Math.round(9 / this.scale))}px Segoe UI, Arial`;
             this.ctx.textAlign = 'left';
             this.ctx.textBaseline = 'top';
             this.ctx.fillStyle = color;
-            this.ctx.fillText(label, x + r + 2, y + r + 2);
+            this.ctx.fillText(t, x + r + 2, y + r + 2);
         }
     }
 

@@ -6,38 +6,24 @@
 #include "../coverage_path_planning.h"
 
 typedef enum {
-    BOUND_IN,           // IN event for boundary
-    BOUND_SIDE_IN,      // SIDE_IN event for boundary
-    BOUND_INIT,         // left-most boundary polygon vertex
+    B_IN,
+    B_SIDE_IN,
+    B_INIT,
     
-    BOUND_OUT,          // OUT event for boundary
-    BOUND_SIDE_OUT,     // SIDE_OUT event for boundary
-    BOUND_DEINIT,       // right-most boundary polygon vertex
+    B_OUT,
+    B_SIDE_OUT,
+    B_DEINIT,
 
-    IN,                 // left-most obstacle polygon vertex OR
-                        // (floor_edge_vector_angle ∈ (90, 180] AND 
-                        // ceiling_edge_vector_angle ∈ (270, (floor_edge_vector_angle + 180))) OR
-                        // (floor_edge_vector_angle ∈ (180, 270) AND
-                        // ceiling_edge_vector_angle ∈ (270, 360] ∪ [0, (floor_edge_vector_angle - 180)))
+    IN,                 
+    SIDE_IN,
     
-    SIDE_IN,            // (floor_edge_vector_angle ∈ (90, 180] AND 
-                        // ceiling_edge_vector_angle ∈ [0, 90) ∪ ((floor_edge_vector_angle + 180), 360]) OR
-                        // (floor_edge_vector_angle ∈ (180, 270) AND
-                        // ceiling_edge_vector_angle ∈ ((floor_edge_vector_angle - 180), 270))
+    OUT,
+    SIDE_OUT,
     
-    OUT,                // right-most obstacle polygon vertex OR
-                        // (ceiling_edge_vector_angle ∈ [0, 90) AND 
-                        // floor_edge_vector_angle ∈ (90, (90 + ceiling_edge_vector_angle))) OR
-                        // (ceiling_edge_vector_angle ∈ (270, 360] AND
-                        // floor_edge_vector_angle ∈ (90, (ceiling_edge_vector_angle - 180)))
-    
-    SIDE_OUT,           // (ceiling_edge_vector_angle ∈ [0, 90) AND 
-                        // floor_edge_vector_angle ∈ ((ceiling_edge_vector_angle + 180), 270)) OR
-                        // (ceiling_edge_vector_angle ∈ (270, 360] AND
-                        // floor_edge_vector_angle ∈ ((ceiling_edge_vector_angle - 180), 270)) 
-    
-    FLOOR,              // event between OUT and IN (traced along the polygon verticies in winding order); floor event has only floor_edge
-    CEILING             // event between IN and OUT (traced along the polygon verticies in winding order); ceiling event has only ceiling_edge
+    FLOOR,
+    CEILING,
+
+    NONE
 } bcd_event_type_t;
 
 typedef struct {

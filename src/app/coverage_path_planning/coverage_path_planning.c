@@ -32,13 +32,13 @@ char *coverage_path_planning_process(const char *input_environment_json)
 		return err_cleanup(&env, &event_list, rc);
 	}
 
-	printf("coverage_path_planning: generating BCD event list\n");
 	rc = build_bcd_event_list(&env, &event_list);
 	if (rc != 0)
 	{
 		printf("coverage_path_planning: BCD event list generation failed (code %d)\n", rc);
 		return err_cleanup(&env, &event_list, rc);
 	}
+	printf("coverage_path_planning: generated BCD event list\n");
 
 	// printf("coverage_path_planning: passing event list to BCD cellular decomposition\n");
 	// rc = bcd_process_event_list(event_list);
@@ -50,7 +50,7 @@ char *coverage_path_planning_process(const char *input_environment_json)
 	// 	return;
 	// }
 
-	log_event_list(&event_list);
+	// log_event_list(&event_list);
 
 	char *json_out = serialize_event_list_json(&event_list);
 
@@ -142,12 +142,12 @@ static const char *event_type_to_string(bcd_event_type_t t)
 {
 	switch (t)
 	{
-	case BOUND_INIT: return "BOUND_INIT";
-	case BOUND_DEINIT: return "BOUND_DEINIT";
-	case BOUND_IN: return "BOUND_IN";
-	case BOUND_OUT: return "BOUND_OUT";
-	case BOUND_SIDE_IN: return "BOUND_SIDE_IN";
-	case BOUND_SIDE_OUT: return "BOUND_SIDE_OUT";
+	case B_INIT: return "B_INIT";
+	case B_DEINIT: return "B_DEINIT";
+	case B_IN: return "B_IN";
+	case B_OUT: return "B_OUT";
+	case B_SIDE_IN: return "B_SIDE_IN";
+	case B_SIDE_OUT: return "B_SIDE_OUT";
 	case IN: return "IN";
 	case SIDE_IN: return "SIDE_IN";
 	case OUT: return "OUT";
@@ -315,23 +315,23 @@ static void log_event_list(const bcd_event_list_t *event_list)
 			const char *type_str = "UNKNOWN";
 			switch (event_list->bcd_events[i].bcd_event_type)
 			{
-			case BOUND_INIT:
-				type_str = "BOUND_INIT";
+			case B_INIT:
+				type_str = "B_INIT";
 				break;
-			case BOUND_DEINIT:
-				type_str = "BOUND_DEINIT";
+			case B_DEINIT:
+				type_str = "B_DEINIT";
 				break;
-			case BOUND_IN:
-				type_str = "BOUND_IN";
+			case B_IN:
+				type_str = "B_IN";
 				break;
-			case BOUND_OUT:
-				type_str = "BOUND_OUT";
+			case B_OUT:
+				type_str = "B_OUT";
 				break;
-			case BOUND_SIDE_IN:
-				type_str = "BOUND_SIDE_IN";
+			case B_SIDE_IN:
+				type_str = "B_SIDE_IN";
 				break;
-			case BOUND_SIDE_OUT:
-				type_str = "BOUND_SIDE_OUT";
+			case B_SIDE_OUT:
+				type_str = "B_SIDE_OUT";
 				break;
 			case IN:
 				type_str = "IN";

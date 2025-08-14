@@ -22,12 +22,11 @@ static int find_common_event(const polygon_t polygon,
                              bcd_event_list_t *event_list,
                              int vertex_index);
 
-static bool in_event(const polygon_t polygon, int vertex_index, int floor_edge_index, int ceiling_edge_index);
-static bool side_in_event(const polygon_t polygon, int vertex_index, int floor_edge_index, int ceiling_edge_index);
-static bool out_event(const polygon_t polygon, int vertex_index, int floor_edge_index, int ceiling_edge_index);
-static bool side_out_event(const polygon_t polygon, int vertex_index, int floor_edge_index, int ceiling_edge_index);
-static bool floor_event(const polygon_t polygon, int vertex_index, int floor_edge_index);
-static bool ceiling_event(const polygon_t polygon, int vertex_index, int ceiling_edge_index);
+static bool in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
+static bool side_in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
+static bool out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
+static bool side_out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
+static bcd_event_type_t floor_or_ceiling_event(const bcd_event_list_t *event_list);
 
 static int push_to_bcd_event_list(bcd_event_list_t *event_list,
                                   bcd_event_t event);
@@ -148,7 +147,7 @@ static int find_leftmost_event(const polygon_t polygon,
     polygon_type_t polygon_type;
     polygon_type = polygon.winding == POLYGON_WINDING_CW ? BOUNDARY : OBSTACLE;
     bcd_event_type_t event_type;
-    event_type = polygon_type == BOUNDARY ? BOUND_INIT : IN;
+    event_type = polygon_type == BOUNDARY ? B_INIT : IN;
 
     leftmost_event = fill_bcd_event(polygon_type,
                                     polygon.vertices[leftmost_index],
@@ -180,40 +179,43 @@ static int find_common_event(const polygon_t polygon,
     int emanating = vertex_index;
     int terminating = (vertex_index + polygon.vertex_count - 1) % polygon.vertex_count;
 
-    if (in_event(polygon, vertex_index, terminating, emanating))
+    if (in_event(polygon.edges[terminating], polygon.edges[emanating]))
     {
         event_type = IN;
         floor_edge_index = terminating;
         ceiling_edge_index = emanating;
     }
-    else if (side_in_event(polygon, vertex_index, terminating, emanating))
+    else if (side_in_event(polygon.edges[terminating], polygon.edges[emanating]))
     {
         event_type = SIDE_IN;
         floor_edge_index = terminating;
         ceiling_edge_index = emanating;
     }
-    else if (out_event(polygon, vertex_index, emanating, terminating))
+    else if (out_event(polygon.edges[emanating], polygon.edges[terminating]))
     {
         event_type = OUT;
         floor_edge_index = emanating;
         ceiling_edge_index = terminating;
     }
-    else if (side_out_event(polygon, vertex_index, emanating, terminating))
+    else if (side_out_event(polygon.edges[emanating], polygon.edges[terminating]))
     {
         event_type = SIDE_OUT;
         floor_edge_index = emanating;
         ceiling_edge_index = terminating;
     }
-    // else if (floor_event(polygon, vertex_index, terminating))
-    // {
-    //     event_type = FLOOR;
-    //     floor_edge_index = terminating;
-    // }
-    // else if (ceiling_event(polygon, vertex_index, emanating))
-    // {
-    //     event_type = CEILING;
-    //     ceiling_edge_index = emanating;
-    // }
+    else if ((event_type = floor_or_ceiling_event(event_list)) != NONE)
+    {
+        if (event_type == FLOOR)
+        {
+            floor_edge_index = terminating;
+            ceiling_edge_index = -1;
+        }
+        else if (event_type == CEILING)
+        {
+            floor_edge_index = -1;
+            ceiling_edge_index = emanating;
+        }
+    }
     else
     {
         // No matching event type for this vertex; do not push any event
@@ -239,10 +241,10 @@ static int find_common_event(const polygon_t polygon,
     return 0;
 }
 
-static bool in_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
+static bool in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
 {
-    float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
-    float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
+    float floor_angle = compute_vector_angle_degrees(floor_edge);
+    float ceil_angle = compute_vector_angle_degrees(ceil_edge);
 
     if (90.0f < floor_angle && floor_angle <= 180.0f)
     {
@@ -259,10 +261,10 @@ static bool in_event(const polygon_t poly, int vertex_index, int floor_edge_inde
     return false;
 }
 
-static bool side_in_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
+static bool side_in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
 {
-    float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
-    float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
+    float floor_angle = compute_vector_angle_degrees(floor_edge);
+    float ceil_angle = compute_vector_angle_degrees(ceil_edge);
 
     if (90.0f < floor_angle && floor_angle <= 180.0f)
     {
@@ -279,10 +281,10 @@ static bool side_in_event(const polygon_t poly, int vertex_index, int floor_edge
     return false;
 }
 
-static bool out_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
+static bool out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
 {
-    float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
-    float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
+    float floor_angle = compute_vector_angle_degrees(floor_edge);
+    float ceil_angle = compute_vector_angle_degrees(ceil_edge);
 
     if (0.0f <= ceil_angle && ceil_angle < 90.0f)
     {
@@ -299,10 +301,10 @@ static bool out_event(const polygon_t poly, int vertex_index, int floor_edge_ind
     return false;
 }
 
-static bool side_out_event(const polygon_t poly, int vertex_index, int floor_edge_index, int ceiling_edge_index)
+static bool side_out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
 {
-    float floor_angle = compute_vector_angle_degrees(poly.edges[floor_edge_index]);
-    float ceil_angle = compute_vector_angle_degrees(poly.edges[ceiling_edge_index]);
+    float floor_angle = compute_vector_angle_degrees(floor_edge);
+    float ceil_angle = compute_vector_angle_degrees(ceil_edge);
 
     if (0.0f <= ceil_angle && ceil_angle < 90.0f)
     {
@@ -319,12 +321,20 @@ static bool side_out_event(const polygon_t poly, int vertex_index, int floor_edg
     return false;
 }
 
-static bool floor_event(const polygon_t poly, int vertex_index, int floor_edge_index)
+static bcd_event_type_t floor_or_ceiling_event(const bcd_event_list_t *event_list)
 {
-}
+    for (int i = event_list->length - 1; i >= 0; i--)
+    {
+        bcd_event_type_t prev_event = event_list->bcd_events[i].bcd_event_type;
+        
+        if (prev_event == B_INIT || prev_event == B_IN || prev_event == B_SIDE_IN || prev_event == IN || prev_event == SIDE_IN)
+            return CEILING;
 
-static bool ceiling_event(const polygon_t poly, int vertex_index, int ceiling_edge_index)
-{
+        if (prev_event == B_DEINIT || prev_event == B_OUT || prev_event == B_SIDE_OUT || prev_event == OUT || prev_event == SIDE_OUT)
+            return FLOOR;
+    }
+
+    return NONE;
 }
 
 static float compute_vector_angle_degrees(polygon_edge_t poly_edge)
