@@ -5,6 +5,7 @@ class UIController {
         this.isDrawingBoundary = false;
         this.isDrawingObstacle = false;
         this.isDeletingObstacle = false;
+    this.isPanKeyActive = false; // hold Space to pan while in any mode
         
         // Initialize service dependencies
         this.dataService = new DataService();
@@ -61,7 +62,12 @@ class UIController {
         document.getElementById('clearCanvas').addEventListener('click', () => { this.cancelAllModes(); this.clearCanvas(); });
         document.getElementById('resetView').addEventListener('click', () => { this.cancelAllModes(); this.handleResetView(); });
         document.getElementById('toggleGrid').addEventListener('click', () => { this.cancelAllModes(); this.handleToggleGrid(); });
-        document.getElementById('exportData').addEventListener('click', () => { this.cancelAllModes(); this.exportData(); });
+    const runBCD = document.getElementById('runBCD');
+    if (runBCD) runBCD.addEventListener('click', () => { this.cancelAllModes(); this.runBCD(); });
+    const saveBtn = document.getElementById('saveEnv');
+    if (saveBtn) saveBtn.addEventListener('click', () => { this.cancelAllModes(); this.openSaveModal(); });
+    const loadBtn = document.getElementById('loadEnv');
+    if (loadBtn) loadBtn.addEventListener('click', () => { this.cancelAllModes(); this.openLoadModal(); });
         document.getElementById('pathWidth').addEventListener('change', (e) => {
             this.cancelAllModes();
             this.inputEnvironment.pathWidth = parseFloat(e.target.value);
@@ -79,8 +85,9 @@ class UIController {
         this.canvasManager.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
         this.canvasManager.canvas.addEventListener('dragstart', (e) => e.preventDefault());
         
-        // Add keyboard event listener for ESC key
-        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+    // Keyboard: ESC cancel; Space enables temporary pan mode
+    document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+    document.addEventListener('keyup', (e) => this.handleKeyUp(e));
         
         this.updateDisplay();
         this.canvasManager.draw();
@@ -97,16 +104,146 @@ class UIController {
         this.canvasManager.draw();
     }
 
-    exportData() {
+    openSaveModal() {
+        const modal = document.getElementById('saveModal');
+        const input = document.getElementById('saveFileName');
+        const confirm = document.getElementById('saveConfirm');
+        const cancel = document.getElementById('saveCancel');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        if (input) input.value = '';
+        const close = () => modal.classList.add('hidden');
+        const onSave = async () => {
+            const name = (input?.value || '').trim();
+            if (!name) { this.canvasManager.showNotification('Enter a file name.'); return; }
+            try {
+                await this.dataService.saveEnvironment(name, this.inputEnvironment.json);
+                this.canvasManager.showNotification('Environment saved.');
+                close();
+            } catch (e) {
+                this.canvasManager.showNotification('Save failed.');
+            }
+        };
+        confirm?.addEventListener('click', onSave, { once: true });
+        cancel?.addEventListener('click', () => close(), { once: true });
+    }
+
+    async openLoadModal() {
+        const modal = document.getElementById('loadModal');
+        const list = document.getElementById('loadList');
+        const cancel = document.getElementById('loadCancel');
+        if (!modal || !list) return;
+        modal.classList.remove('hidden');
+        list.innerHTML = 'Loading...';
+        try {
+            const items = await this.dataService.listSavedEnvironments();
+            if (!Array.isArray(items) || items.length === 0) {
+                list.innerHTML = '<div class="item">No saved environments.</div>';
+            } else {
+                list.innerHTML = '';
+                for (const name of items) {
+                    const row = document.createElement('div');
+                    row.className = 'item';
+                    const span = document.createElement('span');
+                    span.textContent = name;
+                    const loadBtn = document.createElement('button');
+                    loadBtn.className = 'control-btn small';
+                    loadBtn.textContent = 'Load';
+                    loadBtn.addEventListener('click', async () => {
+                        try {
+                            const data = await this.dataService.loadEnvironment(name);
+                            this.applyEnvironmentJSON(data);
+                            this.canvasManager.showNotification('Environment loaded.');
+                            modal.classList.add('hidden');
+                        } catch (e) {
+                            this.canvasManager.showNotification('Load failed.');
+                        }
+                    });
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'control-btn small cancel';
+                    delBtn.textContent = 'Delete';
+                    delBtn.addEventListener('click', async () => {
+                        try {
+                            await this.dataService.deleteEnvironment(name);
+                            this.canvasManager.showNotification('Deleted.');
+                            // Refresh list
+                            this.openLoadModal();
+                        } catch (e) {
+                            this.canvasManager.showNotification('Delete failed.');
+                        }
+                    });
+                    const actions = document.createElement('div');
+                    actions.className = 'item-actions';
+                    actions.appendChild(loadBtn);
+                    actions.appendChild(delBtn);
+                    row.appendChild(span);
+                    row.appendChild(actions);
+                    list.appendChild(row);
+                }
+            }
+        } catch (e) {
+            list.innerHTML = '<div class="item">Failed to load list.</div>';
+        }
+        cancel?.addEventListener('click', () => modal.classList.add('hidden'), { once: true });
+    }
+
+    applyEnvironmentJSON(json) {
+        if (!json) return;
+        // Reset environment
+        const newEnv = new InputEnvironment();
+        // Keep provided id if present
+        if (typeof json.id === 'number') newEnv.id = json.id;
+        if (typeof json.pathWidth === 'number') newEnv.pathWidth = json.pathWidth;
+        if (typeof json.pathOverlap === 'number') newEnv.pathOverlap = json.pathOverlap;
+        // Boundary
+        if (Array.isArray(json.boundary)) {
+            newEnv.boundaryPolygon.clear();
+            for (const v of json.boundary) {
+                if (v && typeof v.x === 'number' && typeof v.y === 'number') {
+                    newEnv.boundaryPolygon.insertPolygonVertex(new PolygonVertex(v.x, v.y));
+                }
+            }
+        }
+        // Obstacles
+        newEnv.obstaclePolygonList = [];
+        if (Array.isArray(json.obstacles)) {
+            for (const poly of json.obstacles) {
+                if (!Array.isArray(poly)) continue;
+                const obs = new ObstaclePolygon();
+                for (const v of poly) {
+                    if (v && typeof v.x === 'number' && typeof v.y === 'number') {
+                        obs.insertPolygonVertex(new PolygonVertex(v.x, v.y));
+                    }
+                }
+                if (obs.polygonVertexListCcw?.length > 0) newEnv.obstaclePolygonList.push(obs);
+            }
+        }
+        this.inputEnvironment = newEnv;
+        this.canvasManager.inputEnvironment = newEnv;
+        // Clear transient state
+        this.canvasManager.currentObstacle = null;
+        this.isDrawingBoundary = false;
+        this.isDrawingObstacle = false;
+        this.isDeletingObstacle = false;
+        this.canvasManager.isDrawingBoundary = false;
+        this.canvasManager.isDrawingObstacle = false;
+        // Update UI
+        this.uiStateManager.resetAllButtons();
+        this.updateDeleteModeUI();
+        this.updateDisplay();
+        this.canvasManager.draw();
+    }
+
+    runBCD() {
         // Cancel delete mode when exporting data
         if (this.isDeletingObstacle) {
             this.isDeletingObstacle = false;
             this.updateDeleteModeUI();
         }
-        this.exportEnvironmentToConsole();
+        this.runBCDExport();
     }
 
-    exportEnvironmentToConsole() {
+    runBCDExport() {
         const data = this.inputEnvironment.json;
         this.dataService.exportToConsole(data);
         // Also send to server
@@ -119,7 +256,7 @@ class UIController {
                 const es = document.getElementById('toggleEvents');
                 if (es) es.disabled = false;
             }
-            const msg = ok ? 'Exported to server.' : 'Export to server failed.';
+            const msg = ok ? 'BCD run complete.' : 'BCD run failed.';
             this.canvasManager.showNotification(msg);
         });
     }
@@ -161,6 +298,9 @@ class UIController {
                 this.canvasManager.isDrawingBoundary = false;
                 this.uiStateManager.updateDrawingModeUI(false, this.isDrawingObstacle, this.canvasManager.canvas);
             }
+
+            // Clear any existing BCD events, since geometry changed
+            this.clearEventsOverlay();
             
             this.canvasManager.showNotification('Boundary deleted.');
             this.updateDisplay();
@@ -323,13 +463,7 @@ class UIController {
         this.canvasManager.isDrawingObstacle = false;
 
         // Clear event markers and reset toggle state
-        this.canvasManager.setEvents([]);
-        this.canvasManager.showEvents = false;
-        const eventsToggle = document.getElementById('toggleEvents');
-        if (eventsToggle) {
-            eventsToggle.checked = false;
-            eventsToggle.disabled = true; // disabled until next export provides events
-        }
+        this.clearEventsOverlay();
         
         // Reset UI using state manager
         this.uiStateManager.resetAllButtons();
@@ -345,6 +479,16 @@ class UIController {
         const mousePos = this.coordinateTransformer.getMousePositionFromEvent(e);
         const worldMeters = this.coordinateTransformer.screenToWorldMeters(mousePos.x, mousePos.y);
         
+        // Allow panning with middle mouse button or while holding Space
+        const panRequested = (e.button === 1) || this.isPanKeyActive;
+        if (panRequested) {
+            this.canvasManager.isDragging = true;
+            this.canvasManager.lastMouseX = mousePos.x;
+            this.canvasManager.lastMouseY = mousePos.y;
+            this.uiStateManager.updateCanvasCursor(this.canvasManager.canvas, this.uiStateManager.CURSORS.GRABBING);
+            return; // don't process draw/delete on pan start
+        }
+
         if (this.isDeletingObstacle) {
             // Handle obstacle deletion
             this.handleObstacleDeletion(worldMeters);
@@ -383,7 +527,9 @@ class UIController {
             
             // Only add vertex on left click
             if (mouseButton === 0) {
-                const vertex = new PolygonVertex(worldMeters.x, worldMeters.y);
+                // Enforce unique x across all points
+                const uniqueX = this.ensureUniqueX(worldMeters.x);
+                const vertex = new PolygonVertex(uniqueX, worldMeters.y);
                 this.inputEnvironment.boundaryPolygon.insertPolygonVertex(vertex);
             }
         } else if (this.isDrawingObstacle) {
@@ -420,7 +566,9 @@ class UIController {
                 }
                 
                 // Add vertex to current obstacle
-                const vertex = new PolygonVertex(worldMeters.x, worldMeters.y);
+                // Enforce unique x across all points
+                const uniqueX = this.ensureUniqueX(worldMeters.x);
+                const vertex = new PolygonVertex(uniqueX, worldMeters.y);
                 this.canvasManager.currentObstacle.insertPolygonVertex(vertex);
             }
         }
@@ -433,6 +581,8 @@ class UIController {
         if (clickedObstacleIndex !== -1) {
             // Remove the obstacle
             this.inputEnvironment.obstaclePolygonList.splice(clickedObstacleIndex, 1);
+            // Clear any existing BCD events, since geometry changed
+            this.clearEventsOverlay();
             this.canvasManager.showNotification('Obstacle deleted.');
             this.updateDisplay();
             this.canvasManager.draw();
@@ -495,8 +645,8 @@ class UIController {
         // Update mouse coordinate display
         this.uiStateManager.updateMouseCoordinates(worldMetersFormatted.xFormatted, worldMetersFormatted.yFormatted);
         
-        // Handle canvas panning
-        if (this.canvasManager.isDragging && !this.isDrawingBoundary && !this.isDrawingObstacle && !this.isDeletingObstacle) {
+    // Handle canvas panning (allowed in any mode when dragging)
+    if (this.canvasManager.isDragging) {
             const deltaX = mousePos.x - this.canvasManager.lastMouseX;
             const deltaY = mousePos.y - this.canvasManager.lastMouseY;
             
@@ -541,6 +691,12 @@ class UIController {
 
     handleKeyDown(e) {
         // Handle ESC key to cancel current drawing or delete mode
+        if (e.key === ' ' || e.code === 'Space') {
+            // Space enables temporary pan mode
+            this.isPanKeyActive = true;
+            // Do not prevent default to allow scrolling prevention handled elsewhere
+            return;
+        }
         if (e.key === 'Escape' || e.keyCode === 27) {
             if (this.isDeletingObstacle) {
                 // Exit delete mode
@@ -583,6 +739,20 @@ class UIController {
         }
     }
 
+    handleKeyUp(e) {
+        if (e.key === ' ' || e.code === 'Space') {
+            this.isPanKeyActive = false;
+            // Restore cursor when not dragging
+            if (!this.canvasManager.isDragging) {
+                let cursor;
+                if (this.isDrawingBoundary || this.isDrawingObstacle) cursor = this.uiStateManager.CURSORS.CROSSHAIR;
+                else if (this.isDeletingObstacle) cursor = 'crosshair';
+                else cursor = this.uiStateManager.CURSORS.DEFAULT;
+                this.uiStateManager.updateCanvasCursor(this.canvasManager.canvas, cursor);
+            }
+        }
+    }
+
     updateDisplay() {
         const boundaryVertices = this.inputEnvironment.boundaryPolygon.polygonVertexListCw;
         const boundaryPointsCount = boundaryVertices ? boundaryVertices.length : 0;
@@ -619,5 +789,53 @@ class UIController {
         this.canvasManager.currentObstacle = null;
         this.isDrawingObstacle = false;
         this.canvasManager.isDrawingObstacle = false;
+    }
+
+    // Helper: clear BCD event overlay and disable toggle until next run
+    clearEventsOverlay() {
+        this.canvasManager.setEvents([]);
+        this.canvasManager.showEvents = false;
+        const eventsToggle = document.getElementById('toggleEvents');
+        if (eventsToggle) {
+            eventsToggle.checked = false;
+            eventsToggle.disabled = true; // disabled until next export provides events
+        }
+    }
+
+    // Ensure no two points in environment share the same x value.
+    // If duplicate is found, move minimally to the right until unique.
+    ensureUniqueX(x) {
+        const EPS = 1e-6; // equality tolerance
+        const STEP = 1e-4; // minimal right shift per attempt (meters)
+        const xs = this.collectAllXValues();
+        let candidate = x;
+        let moved = false;
+        let guard = 0;
+        const isDup = (val) => xs.some(v => Math.abs(v - val) <= EPS);
+        while (isDup(candidate) && guard < 10000) {
+            candidate += STEP;
+            moved = true;
+            guard++;
+        }
+        if (moved) {
+            // Per requirement, message text must be exactly this
+            this.canvasManager.showNotification('Point moved to the right.');
+        }
+        return candidate;
+    }
+
+    // Collect all existing x values from boundary, all obstacles, and the current obstacle (if any)
+    collectAllXValues() {
+        const xs = [];
+        const b = this.inputEnvironment?.boundaryPolygon?.polygonVertexListCw || [];
+        for (const v of b) if (v && typeof v.x === 'number') xs.push(v.x);
+        const obsList = this.inputEnvironment?.obstaclePolygonList || [];
+        for (const obs of obsList) {
+            const verts = obs?.polygonVertexListCcw || [];
+            for (const v of verts) if (v && typeof v.x === 'number') xs.push(v.x);
+        }
+        const curr = this.canvasManager?.currentObstacle?.polygonVertexListCcw || [];
+        for (const v of curr) if (v && typeof v.x === 'number') xs.push(v.x);
+        return xs;
     }
 }

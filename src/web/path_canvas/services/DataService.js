@@ -31,4 +31,35 @@ class DataService {
             return { status: 'error', message: String(err) };
         }
     }
+
+    async saveEnvironment(name, data) {
+    const url = `/environment/InputEnvironment/save?name=${encodeURIComponent(name)}`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error(`Save failed (${res.status})`);
+        return res.json().catch(() => ({ status: 'ok' }));
+    }
+
+    async listSavedEnvironments() {
+    const res = await fetch('/environment/InputEnvironment/saves');
+        if (!res.ok) throw new Error(`List failed (${res.status})`);
+        return res.json(); // array of names
+    }
+
+    async loadEnvironment(name) {
+    const url = `/environment/InputEnvironment/load?name=${encodeURIComponent(name)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Load failed (${res.status})`);
+        return res.json();
+    }
+
+    async deleteEnvironment(name) {
+    const url = `/environment/InputEnvironment/delete?name=${encodeURIComponent(name)}`;
+        const res = await fetch(url, { method: 'POST' });
+        if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+        return res.json().catch(() => ({ status: 'ok' }));
+    }
 }

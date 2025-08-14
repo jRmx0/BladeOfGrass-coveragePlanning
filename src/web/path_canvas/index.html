@@ -21,19 +21,17 @@
                     <button id="drawObstacle" class="control-btn">Draw Obstacle</button>
                     <button id="deleteObstacle" class="control-btn-square" title="Delete Obstacle">🗑️</button>
                 </div>
+                <button id="runBCD" class="control-btn">Run BCD</button>
                 <button id="clearCanvas" class="control-btn">Clear Canvas</button>
-                <button id="exportData" class="control-btn">Export Data</button>
+                <div class="button-row">
+                    <button id="saveEnv" class="control-btn">Save</button>
+                    <button id="loadEnv" class="control-btn">Load</button>
+                </div>
             </div>
             <div class="controls-group">
                 <h3>Canvas Controls</h3>
                 <button id="resetView" class="control-btn">Reset View</button>
                 <button id="toggleGrid" class="control-btn">Toggle Grid</button>
-            </div>
-            <div class="controls-group">
-                <h3>Testing</h3>
-                <div class="button-row">
-                    <button id="drawRectangle" class="control-btn">Rectangle</button>
-                </div>
             </div>
             <div class="controls-group">
                 <h3>Settings</h3>
@@ -103,7 +101,30 @@
     <script src="ui/CanvasManager.js"></script>
     <script src="ui/UIController.js"></script>
     <script src="ui/UIStateManager.js"></script>
-    <script src="utils/testing.js"></script>
     <script src="app.js"></script>
+
+    <!-- Save Modal -->
+    <div id="saveModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Save Environment</h3>
+            <label for="saveFileName">File name</label>
+            <input type="text" id="saveFileName" placeholder="my-lawn">
+            <div class="modal-actions">
+                <button id="saveConfirm" class="control-btn">Save</button>
+                <button id="saveCancel" class="control-btn secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Modal -->
+    <div id="loadModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Load Environment</h3>
+            <div id="loadList" class="list"></div>
+            <div class="modal-actions">
+                <button id="loadCancel" class="control-btn secondary">Close</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

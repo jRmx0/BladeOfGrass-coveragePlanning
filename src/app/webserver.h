@@ -8,6 +8,10 @@ typedef enum {
     // /environment
     ROUTE_PATH_INPUT_ENVIRONMENT_SCRIPT,
     ROUTE_PATH_INPUT_ENVIRONMENT_EXPORT,
+    ROUTE_PATH_INPUT_ENVIRONMENT_SAVE,
+    ROUTE_PATH_INPUT_ENVIRONMENT_SAVES_LIST,
+    ROUTE_PATH_INPUT_ENVIRONMENT_LOAD,
+    ROUTE_PATH_INPUT_ENVIRONMENT_DELETE,
     // /services
     ROUTE_PATH_COORDINATE_TRANSFORMER_SCRIPT,
     ROUTE_PATH_DATA_SERVICE_SCRIPT,
@@ -15,8 +19,6 @@ typedef enum {
     ROUTE_PATH_CANVAS_MANAGER_SCRIPT,
     ROUTE_PATH_UI_CONTROLLER_SCRIPT,
     ROUTE_PATH_UI_STATE_MANAGER_SCRIPT,
-    // /utils
-    ROUTE_PATH_TESTING_SCRIPT,
     // /
     ROUTE_PATH_INDEX,
     ROUTE_PATH_STYLES,
@@ -39,6 +41,10 @@ void webserver_event_handler(struct mg_connection *c, int ev, void *ev_data);
 // /environment
 void handle_path_input_environment_script_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_input_environment_export_route(struct mg_connection *c, struct mg_http_message *hm);
+void handle_path_input_environment_save_route(struct mg_connection *c, struct mg_http_message *hm);
+void handle_path_input_environment_saves_list_route(struct mg_connection *c, struct mg_http_message *hm);
+void handle_path_input_environment_load_route(struct mg_connection *c, struct mg_http_message *hm);
+void handle_path_input_environment_delete_route(struct mg_connection *c, struct mg_http_message *hm);
 
 // /services
 void handle_path_coordinate_transformer_script_route(struct mg_connection *c, struct mg_http_message *hm);
@@ -49,8 +55,6 @@ void handle_path_canvas_manager_script_route(struct mg_connection *c, struct mg_
 void handle_path_ui_controller_script_route(struct mg_connection *c, struct mg_http_message *hm);
 void handle_path_ui_state_manager_script_route(struct mg_connection *c, struct mg_http_message *hm);
 
-// /utils
-void handle_path_testing_script_route(struct mg_connection *c, struct mg_http_message *hm);
 
 // /
 void handle_path_index_route(struct mg_connection *c, struct mg_http_message *hm);

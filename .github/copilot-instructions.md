@@ -4,7 +4,7 @@ Purpose: Fast-start guide for AI agents. Keep edits small, follow existing patte
 
 ## Big picture
 - C backend (Mongoose) serves a vanilla JS canvas app for coverage planning.
-- Backend: `src/app/` (entry `main.c`) starts Mongoose and dispatches routes in `webserver.c` via `get_route_type` → handler functions. JSON is parsed with cJSON. Coverage logic lives in `src/app/coverage_path_planning/**` and is triggered by a POST export endpoint.
+- Backend: `src/app/` (entry `main.c`) starts Mongoose and dispatches routes in `webserver.c` via `get_route_type` → handler functions. JSON is parsed with cJSON. Coverage logic lives in `src/app/coverage_path_planning/**` and is triggered by a POST export endpoint (Run BCD).
 - Frontend: `src/web/path_canvas/` contains `index.html`, `app.js`, and modules under `environment/`, `services/`, and `ui/`. Boundary polygon is CW; obstacle polygons are CCW.
 
 ## Build workflow (Windows)
@@ -19,17 +19,32 @@ Purpose: Fast-start guide for AI agents. Keep edits small, follow existing patte
 - Static files: `mg_http_serve_file(c, hm, "../../web/path_canvas/...", &opts)`; test page uses `../../web/test/...`. Paths are relative to `src/app/webserver.c`.
 - JSON examples:
   - `/send` → `handle_send_route`: parse body with cJSON, reply JSON with CORS headers.
-  - `/environment/InputEnvironment/export` → `handle_path_input_environment_export_route`: logs prettified JSON, calls `coverage_path_planning_process(body_str)`, replies `{ "status":"ok" }` with CORS.
+  - `/environment/InputEnvironment/export` → `handle_path_input_environment_export_route`: consumes environment JSON, calls `coverage_path_planning_process(body_str)`, replies event list JSON with CORS.
+  - Saves API:
+  - `POST /environment/InputEnvironment/save?name=<file>` → `handle_path_input_environment_save_route`: writes JSON file to `src/save_files/<file>.json` (sanitized name).
+  - `GET /environment/InputEnvironment/saves` → `handle_path_input_environment_saves_list_route`: JSON array of saved names (without .json).
+  - `GET /environment/InputEnvironment/load?name=<file>` → `handle_path_input_environment_load_route`: returns saved JSON.
+  - `POST /environment/InputEnvironment/delete?name=<file>` → `handle_path_input_environment_delete_route`: deletes saved file.
 - Gotcha: Ensure enum names and handler prototypes in `webserver.h` match `webserver.c` (e.g., export route uses `ROUTE_PATH_INPUT_ENVIRONMENT_EXPORT` and `handle_path_input_environment_export_route`). Keep CORS headers identical to existing handlers.
 
 ## Frontend structure & conventions
-- Key files: `environment/InputEnvironment.js`, `services/{CoordinateTransformer,DataService}.js`, `ui/{CanvasManager,UIController,UIStateManager}.js`, `utils/testing.js`, `app.js`.
-- Interaction (from `UIController`): left-click adds points; right-click completes/cancels (≥3 points); ESC cancels; delete mode toggles obstacle deletion. `CanvasManager` manages pan/zoom; `CoordinateTransformer` converts screen↔world.
+- Key files: `environment/InputEnvironment.js`, `services/{CoordinateTransformer,DataService}.js`, `ui/{CanvasManager,UIController,UIStateManager}.js`, `app.js`.
+- Interaction (from `UIController`):
+  - Left-click adds points; right-click completes/cancels (≥3 points) for boundary/obstacles.
+  - ESC cancels current mode.
+  - Delete mode toggles obstacle deletion.
+  - Panning is available at any time with middle-mouse drag or hold Space + drag.
+  - `CanvasManager` manages pan/zoom; `CoordinateTransformer` converts screen↔world.
 
 ## Routes and aliases (examples)
 - `/` or `/path-index.html` or `/index.html` → `index.html`
 - `/path-styles.css` or `/styles.css` → `styles.css`; `/path-script.js` or `/app.js` → `app.js`
-- Module routes: `/environment/InputEnvironment.js`, `/services/{CoordinateTransformer,DataService}.js`, `/ui/{CanvasManager,UIController,UIStateManager}.js`, `/utils/testing.js` (alias `/testing.js`).
+- Module routes: `/environment/InputEnvironment.js`, `/services/{CoordinateTransformer,DataService}.js`, `/ui/{CanvasManager,UIController,UIStateManager}.js`.
 - Test page: `/test`, `/test-styles.css`, `/test-script.js`.
+
+## UI overview
+- Left panel: Draw Boundary, Draw Obstacle, Run BCD, Clear Canvas, Save, Load.
+- Save opens a filename prompt; Load lists saved environments with Load/Delete.
+- Run BCD posts the current environment to `/environment/InputEnvironment/export` and shows returned events (toggle via Event Markers switch).
 
 Questions or gaps? If any section is unclear (especially route naming alignment in `webserver.h` vs `webserver.c` or coverage hook expectations), tell me and I’ll refine this doc.

@@ -3,5 +3,4 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputEnvironment = new InputEnvironment();
     const canvasManager = new CanvasManager(canvas, inputEnvironment);
     const uiController = new UIController(inputEnvironment, canvasManager);
-    new TestingController(inputEnvironment, canvasManager, uiController);
 });

@@ -38,7 +38,7 @@ char *coverage_path_planning_process(const char *input_environment_json)
 		printf("coverage_path_planning: BCD event list generation failed (code %d)\n", rc);
 		return err_cleanup(&env, &event_list, rc);
 	}
-	printf("coverage_path_planning: generated BCD event list\n");
+	printf("coverage_path_planning: successfully generated %d events\n", event_list.length);
 
 	// printf("coverage_path_planning: passing event list to BCD cellular decomposition\n");
 	// rc = bcd_process_event_list(event_list);
@@ -50,7 +50,7 @@ char *coverage_path_planning_process(const char *input_environment_json)
 	// 	return;
 	// }
 
-	log_event_list(&event_list);
+	// log_event_list(&event_list);
 
 	char *json_out = serialize_event_list_json(&event_list);
 

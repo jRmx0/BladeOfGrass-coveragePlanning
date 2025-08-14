@@ -325,6 +325,39 @@ input:checked + .slider:before {
     font-weight: 500;
 }
 
+/* Modal */
+.modal.hidden { display: none; }
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    width: 320px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+.modal-content h3 { margin-bottom: 10px; }
+.modal-content input[type="text"] {
+    width: 100%;
+    padding: 6px;
+    margin-bottom: 10px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+}
+.modal-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.list { max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px; margin-bottom: 10px; }
+.list .item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid #eee; gap: 10px; }
+.list .item:last-child { border-bottom: none; }
+.list .item .item-actions { display: flex; gap: 6px; }
+.list .item button { width: auto; padding: 6px 10px; margin: 0; }
+
 /* Input Controls */
 label {
     display: block;
