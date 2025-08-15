@@ -3,6 +3,8 @@
 #ifndef BOUSTROPHEDON_CELLULAR_DECOMPOSITION_H
 #define BOUSTROPHEDON_CELLULAR_DECOMPOSITION_H
 
+#include <stdbool.h>
+#include "../../../../dependencies/cvector/cvector.h"
 #include "../coverage_path_planning.h"
 
 typedef enum {
@@ -45,9 +47,28 @@ typedef struct {
     int capacity;
 } bcd_event_list_t;
 
+typedef struct bcd_cell_t {
+    point_t c_begin;
+    cvector_vector_type(polygon_edge_t) ceiling_edge_list;
+    point_t c_end;
+    point_t f_begin;
+    cvector_vector_type(polygon_edge_t) floor_edge_list;
+    point_t f_end;
+    struct bcd_cell_t *next;
+    struct bcd_cell_t *prev;
+    bool visited;
+} bcd_cell_t;
+
 int build_bcd_event_list(const input_environment_t *env, 
                          bcd_event_list_t *event_list);
 
 void free_bcd_event_list(bcd_event_list_t *event_list);
+
+int compute_bcd_cells(const bcd_event_list_t *event_list,
+                      cvector_vector_type(bcd_cell_t) *cell_list);
+
+void log_bcd_cell_list(const cvector_vector_type(bcd_cell_t) *cell_list);
+
+void free_bcd_cell_list(cvector_vector_type(bcd_cell_t) *cell_list);
 
 #endif // BOUSTROPHEDON_CELLULAR_DECOMPOSITION_H

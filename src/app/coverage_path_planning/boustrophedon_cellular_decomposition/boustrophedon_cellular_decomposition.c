@@ -71,7 +71,7 @@ static void sort_event_list(bcd_event_list_t *event_list);
 static int compare_events(const void *a,
                           const void *b);
 
-// IMPLEMENTATIONS --------------------------------------------------
+// IMPLEMENTATION --- build_bcd_event_list --------------------------
 
 int build_bcd_event_list(const input_environment_t *env,
                          bcd_event_list_t *event_list)
@@ -487,4 +487,92 @@ void free_bcd_event_list(bcd_event_list_t *event_list)
     event_list->bcd_events = NULL;
     event_list->length = 0;
     event_list->capacity = 0;
+}
+
+// IMPLEMENTATION --- compute_bcd_cells -----------------------------
+
+int compute_bcd_cells(const bcd_event_list_t *event_list,
+                      cvector_vector_type(bcd_cell_t) *cell_list)
+{
+
+    return 0;
+}
+
+// log_bcd_cell_list((const cvector_vector_type(bcd_cell_t) *)cell_list);
+void log_bcd_cell_list(const cvector_vector_type(bcd_cell_t) *cell_list)
+{
+    if (!cell_list || !*cell_list)
+    {
+        printf("BCD Cell List: NULL or empty\n");
+        return;
+    }
+    
+    size_t count = cvector_size(*cell_list);
+    printf("BCD Cell List: %zu cells\n", count);
+    
+    for (size_t i = 0; i < count; ++i)
+    {
+        const bcd_cell_t *cell = &(*cell_list)[i];
+        printf("  Cell %zu:\n", i);
+        printf("    c_begin: (%.2f, %.2f)\n", cell->c_begin.x, cell->c_begin.y);
+        printf("    c_end: (%.2f, %.2f)\n", cell->c_end.x, cell->c_end.y);
+        printf("    f_begin: (%.2f, %.2f)\n", cell->f_begin.x, cell->f_begin.y);
+        printf("    f_end: (%.2f, %.2f)\n", cell->f_end.x, cell->f_end.y);
+        printf("    visited: %s\n", cell->visited ? "true" : "false");
+        
+        // Log ceiling edge list
+        if (cell->ceiling_edge_list)
+        {
+            size_t ceiling_count = cvector_size(cell->ceiling_edge_list);
+            printf("    ceiling_edges: %zu edges\n", ceiling_count);
+            for (size_t j = 0; j < ceiling_count; ++j)
+            {
+                printf("      [%zu]: (%.2f,%.2f) -> (%.2f,%.2f)\n", j,
+                       cell->ceiling_edge_list[j].begin.x, cell->ceiling_edge_list[j].begin.y,
+                       cell->ceiling_edge_list[j].end.x, cell->ceiling_edge_list[j].end.y);
+            }
+        }
+        else
+        {
+            printf("    ceiling_edges: NULL\n");
+        }
+        
+        // Log floor edge list
+        if (cell->floor_edge_list)
+        {
+            size_t floor_count = cvector_size(cell->floor_edge_list);
+            printf("    floor_edges: %zu edges\n", floor_count);
+            for (size_t j = 0; j < floor_count; ++j)
+            {
+                printf("      [%zu]: (%.2f,%.2f) -> (%.2f,%.2f)\n", j,
+                       cell->floor_edge_list[j].begin.x, cell->floor_edge_list[j].begin.y,
+                       cell->floor_edge_list[j].end.x, cell->floor_edge_list[j].end.y);
+            }
+        }
+        else
+        {
+            printf("    floor_edges: NULL\n");
+        }
+        
+        printf("    next: %p, prev: %p\n", (void*)cell->next, (void*)cell->prev);
+        printf("\n");
+    }
+}
+
+void free_bcd_cell_list(cvector_vector_type(bcd_cell_t) *cell_list)
+{
+    if (*cell_list)
+	{
+		size_t i;
+		for (i = 0; i < cvector_size(*cell_list); ++i)
+		{
+			if ((*cell_list)[i].ceiling_edge_list) {
+				cvector_free((*cell_list)[i].ceiling_edge_list);
+			}
+			if ((*cell_list)[i].floor_edge_list) {
+				cvector_free((*cell_list)[i].floor_edge_list);
+			}
+		}
+	}
+	cvector_free(*cell_list);
 }

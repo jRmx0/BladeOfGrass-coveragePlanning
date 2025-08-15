@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "coverage_path_planning.h"
 #include "../../../dependencies/cJSON/cJSON.h"
+#include "../../../dependencies/cvector/cvector.h"
 #include "boustrophedon_cellular_decomposition/boustrophedon_cellular_decomposition.h"
 #include "boustrophedon_cellular_decomposition/coverage.h"
 
@@ -15,47 +16,45 @@ static const char *event_type_to_string(bcd_event_type_t t);
 static const char *polygon_type_to_string(polygon_type_t t);
 static char *serialize_event_list_json(const bcd_event_list_t *event_list);
 
-static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, int rc);
+static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) *cell_list, int rc);
 
 char *coverage_path_planning_process(const char *input_environment_json)
 {
 	input_environment_t env;
 
-	bcd_event_list_t event_list;
-	event_list.bcd_events = NULL;
-	event_list.length = 0;
-
 	int rc = parse_input_environment_json(input_environment_json, &env);
 	if (rc != 0)
 	{
 		printf("coverage_path_planning: parse failed (code %d)\n", rc);
-		return err_cleanup(&env, &event_list, rc);
+		return err_cleanup(&env, NULL, NULL, rc);
 	}
+
+	bcd_event_list_t event_list;
+	event_list.bcd_events = NULL;
+	event_list.length = 0;
 
 	rc = build_bcd_event_list(&env, &event_list);
 	if (rc != 0)
 	{
 		printf("coverage_path_planning: BCD event list generation failed (code %d)\n", rc);
-		return err_cleanup(&env, &event_list, rc);
+		return err_cleanup(&env, &event_list, NULL, rc);
 	}
 	printf("coverage_path_planning: successfully generated %d events\n", event_list.length);
 
-	// printf("coverage_path_planning: passing event list to BCD cellular decomposition\n");
-	// rc = bcd_process_event_list(event_list);
-	// if (rc != 0)
-	// {
-	// 	printf("coverage_path_planning: BCD cellular decomposition failed (code %d)\n", rc);
-	// 	free_bcd_event_list(&event_list);
-	// 	free_input_environment(&env);
-	// 	return;
-	// }
+	cvector_vector_type(bcd_cell_t) cell_list = NULL;
+
+	rc = compute_bcd_cells(&event_list, &cell_list);
+	if (rc != 0)
+	{
+		printf("coverage_path_planning: BCD cell computation failed (code %d)\n", rc);
+		return err_cleanup(&env, &event_list, &cell_list, rc);
+	}
 
 	// log_event_list(&event_list);
 
 	char *json_out = serialize_event_list_json(&event_list);
 
-	free_bcd_event_list(&event_list);
-	free_input_environment(&env);
+	err_cleanup(&env, &event_list, &cell_list, rc);
 
 	return json_out;
 }
@@ -359,10 +358,12 @@ static void log_event_list(const bcd_event_list_t *event_list)
 	}
 }
 
-static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, int rc)
+static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) *cell_list, int rc)
 {
-	free_bcd_event_list(event_list);
 	free_input_environment(env);
+	free_bcd_event_list(event_list);
+	free_bcd_cell_list(cell_list);
+
 	cJSON *err = cJSON_CreateObject();
 	cJSON_AddStringToObject(err, "status", "error");
 	cJSON_AddNumberToObject(err, "code", rc);
@@ -409,3 +410,4 @@ void free_input_environment(input_environment_t *env)
 	env->obstacles = NULL;
 	env->obstacle_count = 0;
 }
+
