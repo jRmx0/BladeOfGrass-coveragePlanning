@@ -237,7 +237,7 @@ static int parse_polygon_vertices_from_array(const cJSON *arr, polygon_t *polygo
 		return 0;
 	}
 
-	polygon_vertex_t *vertices = (polygon_vertex_t *)malloc((size_t)n * sizeof(polygon_vertex_t));
+	point_t *vertices = (point_t *)malloc((size_t)n * sizeof(point_t));
 	if (!vertices)
 		return -2;
 

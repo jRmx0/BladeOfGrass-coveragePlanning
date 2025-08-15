@@ -3,11 +3,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "../../../../dependencies/cvector/cvector.h"
 #include "boustrophedon_cellular_decomposition.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+// FORWARD DECLARATIONS ---------------------------------------------
+
+// --- BUILD_BCD_EVENT_LIST
 
 static int preallocate_event_list(const input_environment_t *env,
                                   bcd_event_list_t *event_list);
@@ -15,6 +20,8 @@ static int preallocate_event_list(const input_environment_t *env,
 static int find_polygon_events(const polygon_t polygon,
                                bcd_event_list_t *event_list);
 
+// --- --- FIND_POLYGON_EVENTS
+                               
 static int find_leftmost_event(const polygon_t polygon,
                                bcd_event_list_t *event_list);
 
@@ -22,26 +29,49 @@ static int find_common_event(const polygon_t polygon,
                              bcd_event_list_t *event_list,
                              int vertex_index);
 
-static void sort_event_list(bcd_event_list_t *event_list);
-static int compare_events(const void *a, const void *b);
+// --- --- --- FIND_COMMON_EVENT
 
-static bool in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
-static bool side_in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
-static bool out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
-static bool side_out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge);
+static bool in_event(polygon_edge_t floor_edge,
+                     polygon_edge_t ceil_edge);
+
+static bool side_in_event(polygon_edge_t floor_edge,
+                          polygon_edge_t ceil_edge);
+
+static bool out_event(polygon_edge_t floor_edge,
+                      polygon_edge_t ceil_edge);
+
+static bool side_out_event(polygon_edge_t floor_edge,
+                           polygon_edge_t ceil_edge);
+
 static bcd_event_type_t floor_or_ceiling_event(const bcd_event_list_t *event_list);
+
+static float compute_vector_angle_degrees(polygon_edge_t poly_edge);
+
+// EVENT LIST HELPERS
 
 static int push_to_bcd_event_list(bcd_event_list_t *event_list,
                                   bcd_event_t event);
 
 static bcd_event_t fill_bcd_event(polygon_type_t polygon_type,
-                                  polygon_vertex_t polygon_vertex,
+                                  point_t polygon_vertex,
                                   bcd_event_type_t bcd_event_type,
                                   polygon_edge_t floor_edge,
                                   polygon_edge_t ceiling_edge);
 
-static float compute_vector_angle_degrees(polygon_edge_t poly_edge);
-static void log_vertex_with_angles(const polygon_t poly, polygon_vertex_t v, int f_e_i, float floor_angle, int c_e_i, float ceil_angle);
+static void log_vertex_with_angles(const polygon_t poly,
+                                   point_t v, int f_e_i,
+                                   float floor_angle,
+                                   int c_e_i,
+                                   float ceil_angle);
+
+static void sort_event_list(bcd_event_list_t *event_list);
+
+// --- --- SORT_EVENT_LIST
+
+static int compare_events(const void *a,
+                          const void *b);
+
+// IMPLEMENTATIONS --------------------------------------------------
 
 int build_bcd_event_list(const input_environment_t *env,
                          bcd_event_list_t *event_list)
@@ -70,8 +100,12 @@ int build_bcd_event_list(const input_environment_t *env,
 
     sort_event_list(event_list);
 
+// --- BUILD_BCD_EVENT_LIST helpers (order per forward declarations)
+
     return 0;
 }
+
+// --- BUILD_BCD_EVENT_LIST
 
 static int preallocate_event_list(const input_environment_t *env,
                                   bcd_event_list_t *event_list)
@@ -125,6 +159,8 @@ static int find_polygon_events(const polygon_t polygon,
 
     return 0;
 }
+
+// --- --- FIND_POLYGON_EVENTS
 
 static int find_leftmost_event(const polygon_t polygon,
                                bcd_event_list_t *event_list)
@@ -242,31 +278,13 @@ static int find_common_event(const polygon_t polygon,
     {
         return -2;
     }
-
     return 0;
 }
-static void sort_event_list(bcd_event_list_t *event_list)
-{
-    if (!event_list || event_list->length <= 1)
-        return;
 
-    qsort(event_list->bcd_events, event_list->length, sizeof(bcd_event_t), compare_events);
-}
+// --- --- --- FIND_COMMON_EVENT
 
-static int compare_events(const void *a, const void *b)
-{
-    const bcd_event_t *event_a = (const bcd_event_t *)a;
-    const bcd_event_t *event_b = (const bcd_event_t *)b;
-    
-    if (event_a->polygon_vertex.x < event_b->polygon_vertex.x)
-        return -1;
-    else if (event_a->polygon_vertex.x > event_b->polygon_vertex.x)
-        return 1;
-    else
-        return 0;
-}
-
-static bool in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
+static bool in_event(polygon_edge_t floor_edge, 
+                     polygon_edge_t ceil_edge)
 {
     float floor_angle = compute_vector_angle_degrees(floor_edge);
     float ceil_angle = compute_vector_angle_degrees(ceil_edge);
@@ -286,7 +304,8 @@ static bool in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
     return false;
 }
 
-static bool side_in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
+static bool side_in_event(polygon_edge_t floor_edge, 
+                          polygon_edge_t ceil_edge)
 {
     float floor_angle = compute_vector_angle_degrees(floor_edge);
     float ceil_angle = compute_vector_angle_degrees(ceil_edge);
@@ -306,7 +325,8 @@ static bool side_in_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
     return false;
 }
 
-static bool out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
+static bool out_event(polygon_edge_t floor_edge, 
+                      polygon_edge_t ceil_edge)
 {
     float floor_angle = compute_vector_angle_degrees(floor_edge);
     float ceil_angle = compute_vector_angle_degrees(ceil_edge);
@@ -326,7 +346,8 @@ static bool out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
     return false;
 }
 
-static bool side_out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
+static bool side_out_event(polygon_edge_t floor_edge, 
+                           polygon_edge_t ceil_edge)
 {
     float floor_angle = compute_vector_angle_degrees(floor_edge);
     float ceil_angle = compute_vector_angle_degrees(ceil_edge);
@@ -337,7 +358,8 @@ static bool side_out_event(polygon_edge_t floor_edge, polygon_edge_t ceil_edge)
         return (90.0f < floor_angle && floor_angle < max_floor_angle);
     }
 
-    if (270.0f < ceil_angle <= 360.0f)
+    // Fix chained comparison: use logical AND
+    if (270.0f < ceil_angle && ceil_angle <= 360.0f)
     {
         float max_floor_angle = ceil_angle - 180.0f;
         return (90.0f < floor_angle && floor_angle < max_floor_angle);
@@ -351,7 +373,7 @@ static bcd_event_type_t floor_or_ceiling_event(const bcd_event_list_t *event_lis
     for (int i = event_list->length - 1; i >= 0; i--)
     {
         bcd_event_type_t prev_event = event_list->bcd_events[i].bcd_event_type;
-        
+
         if (prev_event == B_INIT || prev_event == B_IN || prev_event == B_SIDE_IN || prev_event == IN || prev_event == SIDE_IN)
             return CEILING;
 
@@ -364,8 +386,8 @@ static bcd_event_type_t floor_or_ceiling_event(const bcd_event_list_t *event_lis
 
 static float compute_vector_angle_degrees(polygon_edge_t poly_edge)
 {
-    polygon_vertex_t begin = poly_edge.begin;
-    polygon_vertex_t end = poly_edge.end;
+    point_t begin = poly_edge.begin;
+    point_t end = poly_edge.end;
 
     float dx = end.x - begin.x;
     float dy = end.y - begin.y;
@@ -386,14 +408,7 @@ static float compute_vector_angle_degrees(polygon_edge_t poly_edge)
     return angle_degrees;
 }
 
-// log_vertex_with_angles(poly, poly.vertices[vertex_index], floor_edge_index, floor_angle, ceiling_edge_index, ceil_angle);
-static void log_vertex_with_angles(const polygon_t poly, polygon_vertex_t v, int f_e_i, float floor_angle, int c_e_i, float ceil_angle)
-{
-    printf("BCD debug: vertex=(%.3f, %.3f)\n          f_e_b=(%.3f, %.3f), f_e_e=(%.3f, %.3f), f_a=%.2f deg,\n          c_e_b=(%.3f, %.3f), c_e_e=(%.3f, %.3f), c_a=%.2f deg\n",
-           v.x, v.y,
-           poly.edges[f_e_i].begin.x, poly.edges[f_e_i].begin.y, poly.edges[f_e_i].end.x, poly.edges[f_e_i].end.y, floor_angle,
-           poly.edges[c_e_i].begin.x, poly.edges[c_e_i].begin.y, poly.edges[c_e_i].end.y, poly.edges[c_e_i].end.y, ceil_angle);
-}
+// EVENT LIST HELPERS
 
 static int push_to_bcd_event_list(bcd_event_list_t *event_list,
                                   bcd_event_t event)
@@ -405,6 +420,59 @@ static int push_to_bcd_event_list(bcd_event_list_t *event_list,
     event_list->bcd_events[event_list->length] = event;
     event_list->length += 1;
     return 0;
+}
+
+static bcd_event_t fill_bcd_event(polygon_type_t polygon_type,
+                                  point_t polygon_vertex,
+                                  bcd_event_type_t bcd_event_type,
+                                  polygon_edge_t floor_edge,
+                                  polygon_edge_t ceiling_edge)
+{
+    bcd_event_t bcd_event;
+    bcd_event.polygon_type = polygon_type;
+    bcd_event.polygon_vertex = polygon_vertex;
+    bcd_event.bcd_event_type = bcd_event_type;
+    bcd_event.floor_edge = floor_edge;
+    bcd_event.ceiling_edge = ceiling_edge;
+    return bcd_event;
+}
+
+static void sort_event_list(bcd_event_list_t *event_list)
+{
+    if (!event_list || event_list->length <= 1)
+        return;
+
+    qsort(event_list->bcd_events, event_list->length, sizeof(bcd_event_t), compare_events);
+}
+
+// --- --- SORT_EVENT_LIST
+
+static int compare_events(const void *a, 
+                          const void *b)
+{
+    const bcd_event_t *event_a = (const bcd_event_t *)a;
+    const bcd_event_t *event_b = (const bcd_event_t *)b;
+
+    if (event_a->polygon_vertex.x < event_b->polygon_vertex.x)
+        return -1;
+    else if (event_a->polygon_vertex.x > event_b->polygon_vertex.x)
+        return 1;
+    else
+        return 0;
+}
+
+// log_vertex_with_angles(poly, poly.vertices[vertex_index], floor_edge_index, floor_angle, ceiling_edge_index, ceil_angle);
+static void log_vertex_with_angles(const polygon_t poly, 
+                                   point_t v, 
+                                   int f_e_i, 
+                                   float floor_angle, 
+                                   int c_e_i, 
+                                   float ceil_angle)
+{
+    printf("BCD debug: vertex=(%.3f, %.3f)\n          f_e_b=(%.3f, %.3f), f_e_e=(%.3f, %.3f), f_a=%.2f deg,\n          c_e_b=(%.3f, %.3f), c_e_e=(%.3f, %.3f), c_a=%.2f deg\n",
+           v.x, v.y,
+           poly.edges[f_e_i].begin.x, poly.edges[f_e_i].begin.y, poly.edges[f_e_i].end.x, poly.edges[f_e_i].end.y, floor_angle,
+           poly.edges[c_e_i].begin.x, poly.edges[c_e_i].begin.y, poly.edges[c_e_i].end.x, poly.edges[c_e_i].end.y, ceil_angle);
 }
 
 void free_bcd_event_list(bcd_event_list_t *event_list)
@@ -419,19 +487,4 @@ void free_bcd_event_list(bcd_event_list_t *event_list)
     event_list->bcd_events = NULL;
     event_list->length = 0;
     event_list->capacity = 0;
-}
-
-static bcd_event_t fill_bcd_event(polygon_type_t polygon_type,
-                                  polygon_vertex_t polygon_vertex,
-                                  bcd_event_type_t bcd_event_type,
-                                  polygon_edge_t floor_edge,
-                                  polygon_edge_t ceiling_edge)
-{
-    bcd_event_t bcd_event;
-    bcd_event.polygon_type = polygon_type;
-    bcd_event.polygon_vertex = polygon_vertex;
-    bcd_event.bcd_event_type = bcd_event_type;
-    bcd_event.floor_edge = floor_edge;
-    bcd_event.ceiling_edge = ceiling_edge;
-    return bcd_event;
 }

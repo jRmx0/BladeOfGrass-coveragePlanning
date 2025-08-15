@@ -9,12 +9,12 @@ typedef struct
 {
     float x;
     float y;
-} polygon_vertex_t;
+} point_t;
 
 typedef struct
 {
-    polygon_vertex_t begin;
-    polygon_vertex_t end;
+    point_t begin;
+    point_t end;
 } polygon_edge_t;
 
 typedef enum {
@@ -32,7 +32,7 @@ typedef struct
 {
     polygon_winding_t winding;
 
-    polygon_vertex_t *vertices;
+    point_t *vertices;
     uint32_t vertex_count;
 
     polygon_edge_t *edges;

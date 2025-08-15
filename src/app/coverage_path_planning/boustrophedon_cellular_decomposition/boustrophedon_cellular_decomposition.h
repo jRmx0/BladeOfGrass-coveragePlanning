@@ -28,7 +28,7 @@ typedef enum {
 
 typedef struct {
     polygon_type_t polygon_type;
-    polygon_vertex_t polygon_vertex;
+    point_t polygon_vertex;
     bcd_event_type_t bcd_event_type;
     polygon_edge_t floor_edge;          // If IN: edge terminating at the event
                                         // IF OUT: edge emanating from the event
@@ -45,7 +45,8 @@ typedef struct {
     int capacity;
 } bcd_event_list_t;
 
-int build_bcd_event_list(const input_environment_t *env, bcd_event_list_t *event_list);
+int build_bcd_event_list(const input_environment_t *env, 
+                         bcd_event_list_t *event_list);
 
 void free_bcd_event_list(bcd_event_list_t *event_list);
 
