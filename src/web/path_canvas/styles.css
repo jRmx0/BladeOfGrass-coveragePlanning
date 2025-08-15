@@ -36,7 +36,7 @@ body {
 
 .center-panel {
     flex: 1;
-    min-width: 600px;
+    min-width: 200px;
     display: flex;
     flex-direction: column;
     padding: 5px;
@@ -45,6 +45,59 @@ body {
 .right-panel {
     flex: 0 0 250px;
     min-width: 220px;
+}
+
+/* Panel Header with Collapse Button */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.panel-header h2 {
+    margin-bottom: 0;
+    padding-bottom: 5px;
+}
+
+.collapse-btn {
+    background-color: #7f8c8d;
+    font-size: 12px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.collapse-btn:hover {
+    background-color: #6c7b7d;
+}
+
+/* Collapsed Panel State */
+.right-panel.collapsed {
+    flex: 0 0 40px;
+    min-width: 40px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.right-panel.collapsed .panel-header {
+    margin-bottom: 0;
+}
+
+.right-panel.collapsed .panel-header h2 {
+    display: none;
+}
+
+.right-panel.collapsed .collapse-btn {
+    transform: rotate(180deg);
+}
+
+.right-panel.collapsed .data-group {
+    display: none;
+}
+
+/* Transition for smooth collapse */
+.right-panel {
+    transition: all 0.3s ease;
 }
 
 /* Headers */
@@ -500,7 +553,7 @@ input[type="number"]:focus {
 }
 
 /* Responsive Design */
-@media (max-width: 1200px) {
+@media (max-width: 850px) {
     .container {
         flex-direction: column;
         height: auto;
@@ -516,6 +569,40 @@ input[type="number"]:focus {
     }
     
     body {
+        overflow-y: auto;
+    }
+}
+
+/* When right panel is collapsed, allow narrower width before stacking */
+@media (max-width: 850px) {
+    .container:has(.right-panel.collapsed) {
+        flex-direction: row;
+        height: 100vh;
+    }
+    
+    .container:has(.right-panel.collapsed) .left-panel,
+    .container:has(.right-panel.collapsed) .right-panel {
+        flex: 0 0 auto;
+    }
+    
+    .container:has(.right-panel.collapsed) .center-panel {
+        min-height: auto;
+    }
+    
+    .container:has(.right-panel.collapsed) body {
+        overflow: hidden;
+    }
+}
+
+/* Only stack at very narrow widths when right panel is collapsed */
+@media (max-width: 500px) {
+    .container:has(.right-panel.collapsed) {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+    
+    .container:has(.right-panel.collapsed) body {
         overflow-y: auto;
     }
 }
