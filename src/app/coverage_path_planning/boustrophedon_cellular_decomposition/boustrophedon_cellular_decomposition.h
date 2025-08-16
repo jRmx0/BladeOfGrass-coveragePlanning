@@ -57,7 +57,14 @@ typedef struct bcd_cell_t {
     struct bcd_cell_t *next;
     struct bcd_cell_t *prev;
     bool visited;
+    bool cleaned;
 } bcd_cell_t;
+
+typedef struct {
+    bcd_cell_t *head;
+    bcd_cell_t *tail;
+    int count;
+} bcd_neighbor_list_t;
 
 int build_bcd_event_list(const input_environment_t *env, 
                          bcd_event_list_t *event_list);
@@ -65,7 +72,8 @@ int build_bcd_event_list(const input_environment_t *env,
 void free_bcd_event_list(bcd_event_list_t *event_list);
 
 int compute_bcd_cells(const bcd_event_list_t *event_list,
-                      cvector_vector_type(bcd_cell_t) *cell_list);
+                      cvector_vector_type(bcd_cell_t) *cell_list,
+                      bcd_neighbor_list_t *neighbor_list);
 
 void log_bcd_cell_list(const cvector_vector_type(bcd_cell_t) *cell_list);
 
