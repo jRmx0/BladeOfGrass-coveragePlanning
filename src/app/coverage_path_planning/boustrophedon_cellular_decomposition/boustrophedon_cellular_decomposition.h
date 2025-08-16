@@ -47,24 +47,33 @@ typedef struct {
     int capacity;
 } bcd_event_list_t;
 
-typedef struct bcd_cell_t {
+// Forward declarations
+typedef struct bcd_cell_t bcd_cell_t;
+typedef struct bcd_neighbor_node_t bcd_neighbor_node_t;
+
+typedef struct bcd_neighbor_node_t {
+    bcd_cell_t *cell;
+    bcd_neighbor_node_t *prev;
+    bcd_neighbor_node_t *next;
+} bcd_neighbor_node_t;
+
+typedef struct {
+    bcd_neighbor_node_t *head;
+    bcd_neighbor_node_t *tail;
+    int count;
+} bcd_neighbor_list_t;
+
+struct bcd_cell_t {
     point_t c_begin;
     cvector_vector_type(polygon_edge_t) ceiling_edge_list;
     point_t c_end;
     point_t f_begin;
     cvector_vector_type(polygon_edge_t) floor_edge_list;
     point_t f_end;
-    struct bcd_cell_t *next;
-    struct bcd_cell_t *prev;
+    bcd_neighbor_list_t neighbor_list;
     bool visited;
     bool cleaned;
-} bcd_cell_t;
-
-typedef struct {
-    bcd_cell_t *head;
-    bcd_cell_t *tail;
-    int count;
-} bcd_neighbor_list_t;
+};
 
 int build_bcd_event_list(const input_environment_t *env, 
                          bcd_event_list_t *event_list);
@@ -72,8 +81,7 @@ int build_bcd_event_list(const input_environment_t *env,
 void free_bcd_event_list(bcd_event_list_t *event_list);
 
 int compute_bcd_cells(const bcd_event_list_t *event_list,
-                      cvector_vector_type(bcd_cell_t) *cell_list,
-                      bcd_neighbor_list_t *neighbor_list);
+                      cvector_vector_type(bcd_cell_t) *cell_list);
 
 void log_bcd_cell_list(const cvector_vector_type(bcd_cell_t) *cell_list);
 

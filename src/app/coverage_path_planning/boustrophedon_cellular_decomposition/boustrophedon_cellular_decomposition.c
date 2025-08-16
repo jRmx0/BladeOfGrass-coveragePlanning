@@ -74,36 +74,40 @@ static int compare_events(const void *a,
 // --- COMPUTE_BCD_CELLS
 
 static int handle_side_in(const bcd_event_t curr_evnt,
-                          cvector_vector_type(bcd_cell_t) * cell_list,
-                          bcd_neighbor_list_t *neighbor_list);
+                          cvector_vector_type(bcd_cell_t) * cell_list);
 
 static int handle_in(const bcd_event_t curr_evnt,
-                     cvector_vector_type(bcd_cell_t) * cell_list,
-                     bcd_neighbor_list_t *neighbor_list);
+                     cvector_vector_type(bcd_cell_t) * cell_list);
 
 static int handle_side_out(const bcd_event_t curr_evnt,
-                           cvector_vector_type(bcd_cell_t) * cell_list,
-                           bcd_neighbor_list_t *neighbor_list);
+                           cvector_vector_type(bcd_cell_t) * cell_list);
 
 static int handle_out(const bcd_event_t curr_evnt,
-                      cvector_vector_type(bcd_cell_t) * cell_list,
-                      bcd_neighbor_list_t *neighbor_list);
+                      cvector_vector_type(bcd_cell_t) * cell_list);
 
 static int handle_floor(const bcd_event_t curr_evnt,
-                        cvector_vector_type(bcd_cell_t) * cell_list,
-                        bcd_neighbor_list_t *neighbor_list);
+                        cvector_vector_type(bcd_cell_t) * cell_list);
 
 static int handle_ceiling(const bcd_event_t curr_evnt,
-                          cvector_vector_type(bcd_cell_t) * cell_list,
-                          bcd_neighbor_list_t *neighbor_list);
+                          cvector_vector_type(bcd_cell_t) * cell_list);
 
-// --- --- HANDLE HELPERS
+// --- --- HANDLER HELPERS
+
+static void update_prev_cell(bcd_cell_t *prev_cell,
+                             point_t c_point,
+                             point_t f_point,
+                             const bcd_cell_t *top_cell,
+                             const bcd_cell_t *bottom_cell);
+
+// --- NEIGHBOR_LIST HELPERS
 
 static void add_head_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
-                                        bcd_cell_t new_head);
+                                        bcd_cell_t *new_head);
 
 static void add_tail_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
-                                        bcd_cell_t new_tail);
+                                        bcd_cell_t *new_tail);
+
+static void free_neighbor_list(bcd_neighbor_list_t *neighbor_list);
 
 // IMPLEMENTATION --- build_bcd_event_list --------------------------
 
@@ -526,8 +530,7 @@ void free_bcd_event_list(bcd_event_list_t *event_list)
 // IMPLEMENTATION --- compute_bcd_cells -----------------------------
 
 int compute_bcd_cells(const bcd_event_list_t *event_list,
-                      cvector_vector_type(bcd_cell_t) * cell_list,
-                      bcd_neighbor_list_t *neighbor_list)
+                      cvector_vector_type(bcd_cell_t) * cell_list)
 {
     int rc = 0;
 
@@ -539,27 +542,27 @@ int compute_bcd_cells(const bcd_event_list_t *event_list,
         switch (curr_evnt_type)
         {
         case SIDE_IN:
-            rc = handle_side_in(curr_evnt, cell_list, neighbor_list);
+            rc = handle_side_in(curr_evnt, cell_list);
             break;
 
         case IN:
-            rc = handle_in(curr_evnt, cell_list, neighbor_list);
+            rc = handle_in(curr_evnt, cell_list);
             break;
 
         case SIDE_OUT:
-            rc = handle_side_out(curr_evnt, cell_list, neighbor_list);
+            rc = handle_side_out(curr_evnt, cell_list);
             break;
 
         case OUT:
-            rc = handle_out(curr_evnt, cell_list, neighbor_list);
+            rc = handle_out(curr_evnt, cell_list);
             break;
 
         case FLOOR:
-            rc = handle_floor(curr_evnt, cell_list, neighbor_list);
+            rc = handle_floor(curr_evnt, cell_list);
             break;
 
         case CEILING:
-            rc = handle_ceiling(curr_evnt, cell_list, neighbor_list);
+            rc = handle_ceiling(curr_evnt, cell_list);
             break;
 
         case NONE:
@@ -582,8 +585,7 @@ int compute_bcd_cells(const bcd_event_list_t *event_list,
 // --- COMPUTE_BCD_CELLS
 
 static int handle_side_in(const bcd_event_t curr_evnt,
-                          cvector_vector_type(bcd_cell_t) *cell_list,
-                          bcd_neighbor_list_t *neighbor_list)
+                          cvector_vector_type(bcd_cell_t) * cell_list)
 {
     bcd_cell_t new_cell;
 
@@ -604,8 +606,8 @@ static int handle_side_in(const bcd_event_t curr_evnt,
 
     new_cell.f_end = empty_pt;
 
-    new_cell.prev = NULL;
-    new_cell.next = NULL;
+    bcd_neighbor_list_t empty_nl = {0};
+    new_cell.neighbor_list = empty_nl;
 
     new_cell.visited = false;
     new_cell.cleaned = false;
@@ -616,82 +618,130 @@ static int handle_side_in(const bcd_event_t curr_evnt,
 }
 
 static int handle_in(const bcd_event_t curr_evnt,
-                     cvector_vector_type(bcd_cell_t) * cell_list,
-                     bcd_neighbor_list_t *neighbor_list)
+                     cvector_vector_type(bcd_cell_t) * cell_list)
 {
-    
-    
+    bcd_cell_t prev_cell;
+    point_t c_point;
+    point_t f_point;
+
+    bcd_cell_t top_cell;
+    bcd_cell_t bottom_cell;
+
+    update_prev_cell(&prev_cell, c_point, f_point, &top_cell, &bottom_cell);
+
     return 0;
 }
 
 static int handle_side_out(const bcd_event_t curr_evnt,
-                           cvector_vector_type(bcd_cell_t) * cell_list,
-                           bcd_neighbor_list_t *neighbor_list)
+                           cvector_vector_type(bcd_cell_t) * cell_list)
 {
     return 0;
 }
 
 static int handle_out(const bcd_event_t curr_evnt,
-                      cvector_vector_type(bcd_cell_t) * cell_list,
-                      bcd_neighbor_list_t *neighbor_list)
+                      cvector_vector_type(bcd_cell_t) * cell_list)
 {
     return 0;
 }
 
 static int handle_floor(const bcd_event_t curr_evnt,
-                        cvector_vector_type(bcd_cell_t) * cell_list,
-                        bcd_neighbor_list_t *neighbor_list)
+                        cvector_vector_type(bcd_cell_t) * cell_list)
 {
     return 0;
 }
 
 static int handle_ceiling(const bcd_event_t curr_evnt,
-                          cvector_vector_type(bcd_cell_t) * cell_list,
-                          bcd_neighbor_list_t *neighbor_list)
+                          cvector_vector_type(bcd_cell_t) * cell_list)
 {
     return 0;
 }
 
 // --- --- HANDLER HELPERS
 
-static void add_head_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
-                                        bcd_cell_t new_head)
+static void update_prev_cell(bcd_cell_t *prev_cell,
+                             point_t c_point,
+                             point_t f_point,
+                             const bcd_cell_t *top_cell,
+                             const bcd_cell_t *bottom_cell)
 {
-    if (!neighbor_list)
+}
+
+// --- NEIGHBOR_LIST HELPERS
+
+static void add_head_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
+                                        bcd_cell_t *new_head)
+{
+    if (!neighbor_list || !new_head)
         return;
 
-    new_head.next = neighbor_list->head;
-    new_head.prev = NULL;
+    bcd_neighbor_node_t *new_node = (bcd_neighbor_node_t *)malloc(sizeof(bcd_neighbor_node_t));
+    if (!new_node)
+        return;
+
+    new_node->cell = new_head;
+    new_node->prev = NULL;
+    new_node->next = neighbor_list->head;
 
     if (neighbor_list->head)
-        neighbor_list->head->prev = &new_head;
+    {
+        neighbor_list->head->prev = new_node;
+    }
 
-    neighbor_list->head = &new_head;
+    neighbor_list->head = new_node;
 
     if (!neighbor_list->tail)
-        neighbor_list->tail = &new_head;
+    {
+        neighbor_list->tail = new_node;
+    }
 
     neighbor_list->count++;
 }
 
 static void add_tail_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
-                                        bcd_cell_t new_tail)
+                                        bcd_cell_t *new_tail)
+{
+    if (!neighbor_list || !new_tail)
+        return;
+
+    bcd_neighbor_node_t *new_node = (bcd_neighbor_node_t *)malloc(sizeof(bcd_neighbor_node_t));
+    if (!new_node)
+        return;
+
+    new_node->cell = new_tail;
+    new_node->next = NULL;
+    new_node->prev = neighbor_list->tail;
+
+    if (neighbor_list->tail)
+    {
+        neighbor_list->tail->next = new_node;
+    }
+
+    neighbor_list->tail = new_node;
+
+    if (!neighbor_list->head)
+    {
+        neighbor_list->head = new_node;
+    }
+
+    neighbor_list->count++;
+}
+
+static void free_neighbor_list(bcd_neighbor_list_t *neighbor_list)
 {
     if (!neighbor_list)
         return;
 
-    new_tail.next = NULL;
-    new_tail.prev = neighbor_list->tail;
+    bcd_neighbor_node_t *current = neighbor_list->head;
+    while (current)
+    {
+        bcd_neighbor_node_t *next = current->next;
+        free(current);
+        current = next;
+    }
 
-    if (neighbor_list->tail)
-        neighbor_list->tail->next = &new_tail;
-
-    neighbor_list->tail = &new_tail;
-
-    if (!neighbor_list->head)
-        neighbor_list->head = &new_tail;
-
-    neighbor_list->count++;
+    neighbor_list->head = NULL;
+    neighbor_list->tail = NULL;
+    neighbor_list->count = 0;
 }
 
 // CELL LIST HELPERS
@@ -752,7 +802,40 @@ void log_bcd_cell_list(const cvector_vector_type(bcd_cell_t) * cell_list)
             printf("    floor_edges: NULL\n");
         }
 
-        printf("    next: %p, prev: %p\n", (void *)cell->next, (void *)cell->prev);
+        printf("    neighbor_list: head=%p, tail=%p, count=%d\n",
+               (void *)cell->neighbor_list.head,
+               (void *)cell->neighbor_list.tail,
+               cell->neighbor_list.count);
+
+        // Log all neighbor nodes in the list
+        if (cell->neighbor_list.head)
+        {
+            printf("    neighbor nodes:\n");
+            bcd_neighbor_node_t *current = cell->neighbor_list.head;
+            int node_index = 0;
+            while (current)
+            {
+                printf("      [%d]: node=%p, cell=%p", node_index, (void *)current, (void *)current->cell);
+                if (current->cell)
+                {
+                    printf(" cell_pos=(%.2f,%.2f)", current->cell->c_begin.x, current->cell->c_begin.y);
+                }
+                printf(" prev=%p, next=%p\n", (void *)current->prev, (void *)current->next);
+                current = current->next;
+                node_index++;
+
+                // Safety check to prevent infinite loops
+                if (node_index > cell->neighbor_list.count + 1)
+                {
+                    printf("      [WARNING]: Potential infinite loop detected in neighbor list!\n");
+                    break;
+                }
+            }
+        }
+        else
+        {
+            printf("    neighbor nodes: (empty list)\n");
+        }
         printf("\n");
     }
 }
@@ -764,14 +847,9 @@ void free_bcd_cell_list(cvector_vector_type(bcd_cell_t) * cell_list)
         size_t i;
         for (i = 0; i < cvector_size(*cell_list); ++i)
         {
-            if ((*cell_list)[i].ceiling_edge_list)
-            {
-                cvector_free((*cell_list)[i].ceiling_edge_list);
-            }
-            if ((*cell_list)[i].floor_edge_list)
-            {
-                cvector_free((*cell_list)[i].floor_edge_list);
-            }
+            cvector_free((*cell_list)[i].ceiling_edge_list);
+            cvector_free((*cell_list)[i].floor_edge_list);
+            free_neighbor_list(&(*cell_list)[i].neighbor_list);
         }
     }
     cvector_free(*cell_list);
