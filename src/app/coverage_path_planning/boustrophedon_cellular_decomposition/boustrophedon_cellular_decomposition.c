@@ -79,6 +79,16 @@ static int handle_side_in(const bcd_event_t curr_evnt,
 static int handle_in(const bcd_event_t curr_evnt,
                      cvector_vector_type(bcd_cell_t) * cell_list);
 
+// --- --- HANDLE_IN HELPERS
+
+static void in_find_prev_cell(const bcd_event_t curr_evt,
+                              cvector_vector_type(bcd_cell_t) * cell_list,
+                              bcd_cell_t **prev_cell,
+                              point_t *c_pt,
+                              point_t *f_pt);
+
+// ---
+
 static int handle_side_out(const bcd_event_t curr_evnt,
                            cvector_vector_type(bcd_cell_t) * cell_list);
 
@@ -93,11 +103,27 @@ static int handle_ceiling(const bcd_event_t curr_evnt,
 
 // --- --- HANDLER HELPERS
 
+static bcd_cell_t fill_bcd_cell(point_t c_begin,
+                                polygon_edge_t c_edge,
+                                point_t c_end,
+                                point_t f_begin,
+                                polygon_edge_t f_edge,
+                                point_t f_end,
+                                bcd_neighbor_list_t neighbor_list,
+                                bool open,
+                                bool visited,
+                                bool cleaned);
+
 static void update_prev_cell(bcd_cell_t *prev_cell,
-                             point_t c_point,
-                             point_t f_point,
-                             const bcd_cell_t *top_cell,
-                             const bcd_cell_t *bottom_cell);
+                             point_t c_pt,
+                             point_t f_pt,
+                             bcd_event_type_t evt_type,
+                             bcd_cell_t *top_cell,
+                             bcd_cell_t *bottom_cell);
+
+static float calc_evt_to_edge_dist(const point_t evt_vertex,
+                                   const polygon_edge_t cell_edge,
+                                   point_t *intersection);
 
 // --- NEIGHBOR_LIST HELPERS
 
@@ -109,7 +135,9 @@ static void add_tail_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
 
 static void free_neighbor_list(bcd_neighbor_list_t *neighbor_list);
 
+//
 // IMPLEMENTATION --- build_bcd_event_list --------------------------
+//
 
 int build_bcd_event_list(const input_environment_t *env,
                          bcd_event_list_t *event_list)
@@ -587,30 +615,16 @@ int compute_bcd_cells(const bcd_event_list_t *event_list,
 static int handle_side_in(const bcd_event_t curr_evnt,
                           cvector_vector_type(bcd_cell_t) * cell_list)
 {
-    bcd_cell_t new_cell;
-
-    new_cell.c_begin = curr_evnt.polygon_vertex;
-
-    cvector_vector_type(polygon_edge_t) new_c_edge_list = NULL;
-    cvector_push_back(new_c_edge_list, curr_evnt.ceiling_edge);
-    new_cell.ceiling_edge_list = new_c_edge_list;
-
-    point_t empty_pt = {0};
-    new_cell.c_end = empty_pt;
-
-    new_cell.f_begin = curr_evnt.polygon_vertex;
-
-    cvector_vector_type(polygon_edge_t) new_f_edge_list = NULL;
-    cvector_push_back(new_f_edge_list, curr_evnt.floor_edge);
-    new_cell.floor_edge_list = new_f_edge_list;
-
-    new_cell.f_end = empty_pt;
-
-    bcd_neighbor_list_t empty_nl = {0};
-    new_cell.neighbor_list = empty_nl;
-
-    new_cell.visited = false;
-    new_cell.cleaned = false;
+    bcd_cell_t new_cell = fill_bcd_cell(curr_evnt.polygon_vertex,
+                                        curr_evnt.ceiling_edge,
+                                        (point_t){0},
+                                        curr_evnt.polygon_vertex,
+                                        curr_evnt.floor_edge,
+                                        (point_t){0},
+                                        (bcd_neighbor_list_t){0},
+                                        true,
+                                        false,
+                                        false);
 
     cvector_push_back(*cell_list, new_cell);
 
@@ -620,17 +634,110 @@ static int handle_side_in(const bcd_event_t curr_evnt,
 static int handle_in(const bcd_event_t curr_evnt,
                      cvector_vector_type(bcd_cell_t) * cell_list)
 {
-    bcd_cell_t prev_cell;
+    bcd_cell_t *prev_cell = NULL;
     point_t c_point;
     point_t f_point;
 
-    bcd_cell_t top_cell;
-    bcd_cell_t bottom_cell;
+    in_find_prev_cell(curr_evnt, cell_list, &prev_cell, &c_point, &f_point);
+    if (prev_cell == NULL) {
+        printf("Error: No previous cell found for IN event\n");
+        return -3;
+    }
+    
+    // Store the index of the previous cell before vector operations
+    size_t prev_cell_index = prev_cell - &(*cell_list)[0];
+    
+    bcd_cell_t top_cell = fill_bcd_cell(c_point,
+                             *cvector_back(prev_cell->ceiling_edge_list),
+                             (point_t){0},
+                             curr_evnt.polygon_vertex,
+                             curr_evnt.floor_edge,
+                             (point_t){0},
+                             (bcd_neighbor_list_t){0},
+                             true,
+                             false,
+                             false);
+    
+    cvector_push_back(*cell_list, top_cell);
+    size_t top_cell_index = cvector_size(*cell_list) - 1;
+    
+    bcd_cell_t bottom_cell = fill_bcd_cell(curr_evnt.polygon_vertex,
+                                           curr_evnt.ceiling_edge,
+                                           (point_t){0},
+                                           f_point,
+                                           *cvector_back(prev_cell->floor_edge_list),
+                                           (point_t){0},
+                                           (bcd_neighbor_list_t){0},
+                                           true,
+                                           false,
+                                           false);
 
-    update_prev_cell(&prev_cell, c_point, f_point, &top_cell, &bottom_cell);
+    cvector_push_back(*cell_list, bottom_cell);
+    size_t bottom_cell_index = cvector_size(*cell_list) - 1;
+
+    prev_cell = &(*cell_list)[prev_cell_index];
+    bcd_cell_t *top_cell_ptr = &(*cell_list)[top_cell_index];
+    bcd_cell_t *bottom_cell_ptr = &(*cell_list)[bottom_cell_index];
+
+    update_prev_cell(prev_cell, c_point, f_point, IN, top_cell_ptr, bottom_cell_ptr);
 
     return 0;
 }
+
+// --- --- HANDLE_IN
+
+static void in_find_prev_cell(const bcd_event_t curr_evt,
+                              cvector_vector_type(bcd_cell_t) * cell_list,
+                              bcd_cell_t **prev_cell,
+                              point_t *c_pt,
+                              point_t *f_pt)
+{
+    if (!cell_list || !*cell_list)
+    {
+        printf("BCD Cell List: NULL or empty\n");
+        return;
+    }
+
+    float min_evt_to_ceil_dist = INFINITY;
+    float min_evt_to_floor_dist = INFINITY;
+    bcd_cell_t *closest_cell = NULL;
+    point_t closest_c_pt;
+    point_t closest_f_pt;
+
+    size_t i;
+    for (i = 0; i < cvector_size(*cell_list); ++i)
+    {
+        bcd_cell_t *cell = &(*cell_list)[i];
+
+        if (!cell->open)
+            continue;
+
+        polygon_edge_t ceil_edge = cell->ceiling_edge_list[(cvector_size(cell->ceiling_edge_list)) - 1];
+        point_t c_intersection;
+        float evt_to_ceil_dist = calc_evt_to_edge_dist(curr_evt.polygon_vertex, ceil_edge, &c_intersection);
+
+        polygon_edge_t floor_edge = cell->floor_edge_list[(cvector_size(cell->floor_edge_list)) - 1];
+        point_t f_intersection;
+        float evt_to_floor_dist = calc_evt_to_edge_dist(curr_evt.polygon_vertex, floor_edge, &f_intersection);
+
+        if ((evt_to_ceil_dist < min_evt_to_ceil_dist &&
+             evt_to_floor_dist < min_evt_to_floor_dist))
+        {
+            min_evt_to_ceil_dist = evt_to_ceil_dist;
+            min_evt_to_floor_dist = evt_to_floor_dist;
+
+            closest_cell = cell;
+            closest_c_pt = c_intersection;
+            closest_f_pt = f_intersection;
+        }
+    }
+
+    *prev_cell = closest_cell;
+    *c_pt = closest_c_pt;
+    *f_pt = closest_f_pt;
+}
+
+// ---
 
 static int handle_side_out(const bcd_event_t curr_evnt,
                            cvector_vector_type(bcd_cell_t) * cell_list)
@@ -658,12 +765,105 @@ static int handle_ceiling(const bcd_event_t curr_evnt,
 
 // --- --- HANDLER HELPERS
 
-static void update_prev_cell(bcd_cell_t *prev_cell,
-                             point_t c_point,
-                             point_t f_point,
-                             const bcd_cell_t *top_cell,
-                             const bcd_cell_t *bottom_cell)
+static bcd_cell_t fill_bcd_cell(point_t c_begin,
+                                polygon_edge_t c_edge,
+                                point_t c_end,
+                                point_t f_begin,
+                                polygon_edge_t f_edge,
+                                point_t f_end,
+                                bcd_neighbor_list_t neighbor_list,
+                                bool open,
+                                bool visited,
+                                bool cleaned)
 {
+    bcd_cell_t cell;
+
+    cell.c_begin = c_begin;
+
+    cvector_vector_type(polygon_edge_t) c_edge_list = NULL;
+    cvector_push_back(c_edge_list, c_edge);
+    cell.ceiling_edge_list = c_edge_list;
+
+    cell.c_end = c_end;
+
+    cell.f_begin = f_begin;
+
+    cvector_vector_type(polygon_edge_t) f_edge_list = NULL;
+    cvector_push_back(f_edge_list, f_edge);
+    cell.floor_edge_list = f_edge_list;
+
+    cell.f_end = f_end;
+
+    cell.neighbor_list = neighbor_list;
+
+    cell.open = open;
+    cell.visited = visited;
+    cell.cleaned = cleaned;
+
+    return cell;
+}
+
+static void update_prev_cell(bcd_cell_t *prev_cell,
+                             point_t c_pt,
+                             point_t f_pt,
+                             bcd_event_type_t evt_type,
+                             bcd_cell_t *top_cell,
+                             bcd_cell_t *bottom_cell)
+{
+    prev_cell->c_end = c_pt;
+    prev_cell->f_end = f_pt;
+
+    bcd_neighbor_list_t *neighbor_list = &prev_cell->neighbor_list;
+
+    if (evt_type == IN)
+    {
+        add_head_cell_neighbor_list(neighbor_list, top_cell);
+        add_head_cell_neighbor_list(neighbor_list, bottom_cell);
+    }
+
+    if (evt_type == OUT)
+    {
+        add_tail_cell_neighbor_list(neighbor_list, top_cell);
+        add_tail_cell_neighbor_list(neighbor_list, bottom_cell);
+    }
+
+    prev_cell->open = false;
+}
+
+static float calc_evt_to_edge_dist(point_t evt_vertex, polygon_edge_t cell_edge, point_t *intersection)
+{
+    float slice = evt_vertex.x;
+
+    point_t edge_start = cell_edge.begin;
+    point_t edge_end = cell_edge.end;
+
+    float min_edge_x = edge_start.x < edge_end.x ? edge_start.x : edge_end.x;
+    float max_edge_x = edge_start.x > edge_end.x ? edge_start.x : edge_end.x;
+
+    if (slice < min_edge_x || slice > max_edge_x)
+    {
+        return INFINITY;
+    }
+
+    // Calculate intersection point on the edge at x = slice
+    float dx = edge_end.x - edge_start.x;
+
+    if (fabsf(dx) < 1e-9f)
+    {
+        // Vertical edge case
+        intersection->x = edge_start.x;
+        intersection->y = edge_start.y;
+    }
+    else
+    {
+        // Linear interpolation to find y at x = slice
+        float t = (slice - edge_start.x) / dx;
+        intersection->x = slice;
+        intersection->y = edge_start.y + t * (edge_end.y - edge_start.y);
+    }
+
+    float dist_dy = intersection->y - evt_vertex.y;
+    return fabsf(dist_dy);
 }
 
 // --- NEIGHBOR_LIST HELPERS

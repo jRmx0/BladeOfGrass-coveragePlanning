@@ -40,10 +40,9 @@ char *coverage_path_planning_process(const char *input_environment_json)
 		return err_cleanup(&env, &event_list, NULL, rc);
 	}
 	printf("coverage_path_planning: successfully generated %d events\n", event_list.length);
-	// log_event_list(&event_list);
+	log_event_list(&event_list);
 
 	cvector_vector_type(bcd_cell_t) cell_list = NULL;
-
 	rc = compute_bcd_cells(&event_list, &cell_list);
 	if (rc != 0)
 	{

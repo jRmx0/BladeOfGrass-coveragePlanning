@@ -71,6 +71,7 @@ struct bcd_cell_t {
     cvector_vector_type(polygon_edge_t) floor_edge_list;
     point_t f_end;
     bcd_neighbor_list_t neighbor_list;
+    bool open;
     bool visited;
     bool cleaned;
 };
