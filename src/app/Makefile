@@ -5,8 +5,9 @@ CFLAGS = -I./cJSON -I./coverage_path_planning -I./coverage_path_planning/boustro
 LIBS = -lws2_32
 SRC = main.c webserver.c \
 	coverage_path_planning/coverage_path_planning.c \
-	coverage_path_planning/boustrophedon_cellular_decomposition/boustrophedon_cellular_decomposition.c \
-	coverage_path_planning/boustrophedon_cellular_decomposition/coverage.c \
+	coverage_path_planning/boustrophedon_cellular_decomposition/bcd_event_list_building.c \
+	coverage_path_planning/boustrophedon_cellular_decomposition/bcd_cell_computation.c \
+	coverage_path_planning/boustrophedon_cellular_decomposition/bcd_coverage_planning.c \
 	../../dependencies/cJSON/cJSON.c \
 	../../dependencies/mongoose/mongoose.c
 BUILD_DIR = build

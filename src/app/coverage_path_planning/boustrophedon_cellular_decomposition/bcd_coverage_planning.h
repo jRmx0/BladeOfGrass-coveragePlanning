@@ -4,7 +4,7 @@
 #define BCD_COVERAGE_H
 
 // Include the BCD header for event structure definition
-#include "boustrophedon_cellular_decomposition.h"
+#include "bcd_event_list_building.h"
 
 // Placeholder functions for future coverage routines
 

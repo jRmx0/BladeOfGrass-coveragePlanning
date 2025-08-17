@@ -4,8 +4,9 @@
 #include "coverage_path_planning.h"
 #include "../../../dependencies/cJSON/cJSON.h"
 #include "../../../dependencies/cvector/cvector.h"
-#include "boustrophedon_cellular_decomposition/boustrophedon_cellular_decomposition.h"
-#include "boustrophedon_cellular_decomposition/coverage.h"
+#include "boustrophedon_cellular_decomposition/bcd_event_list_building.h"
+#include "boustrophedon_cellular_decomposition/bcd_cell_computation.h"
+#include "boustrophedon_cellular_decomposition/bcd_coverage_planning.h"
 
 static int parse_input_environment_json(const char *json, input_environment_t *env);
 static int parse_polygon_vertices_from_array(const cJSON *arr, polygon_t *polygon, polygon_winding_t winding);
