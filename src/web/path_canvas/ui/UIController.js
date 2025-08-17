@@ -227,6 +227,10 @@ class UIController {
         this.isDeletingObstacle = false;
         this.canvasManager.isDrawingBoundary = false;
         this.canvasManager.isDrawingObstacle = false;
+        
+        // Clear event markers and reset toggle state
+        this.clearEventsOverlay();
+        
         // Update UI
         this.uiStateManager.resetAllButtons();
         this.updateDeleteModeUI();
