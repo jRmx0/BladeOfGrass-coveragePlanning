@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include "coverage_path_planning.h"
 #include "../../../dependencies/cJSON/cJSON.h"
 #include "../../../dependencies/cvector/cvector.h"
@@ -304,7 +305,7 @@ static int polygon_build_edges(polygon_t *polygon)
 
 static void log_event_list(const bcd_event_list_t *event_list)
 {
-	printf("coverage_path_planning: successfully generated %d events\n", event_list->length);
+	// printf("coverage_path_planning: successfully generated %d events\n", event_list->length);
 
 	if (event_list->bcd_events != NULL && event_list->length > 0)
 	{
@@ -372,6 +373,15 @@ static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list,
 	cJSON_Delete(err);
 	return out;
 }
+
+// POINT_T helpers
+
+bool are_equal_points(point_t a, point_t b)
+{
+    return a.x == b.x && a.y == b.y;
+}
+
+// 'Destructors'
 
 void free_polygon(polygon_t *polygon)
 {

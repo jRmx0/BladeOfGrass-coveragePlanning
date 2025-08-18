@@ -4,6 +4,7 @@
 #define COVERAGE_PATH_PLANNING_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct
 {
@@ -55,6 +56,12 @@ typedef struct
 // with shape: { "status": "ok", "event_list": [ ... ] } on success, or
 // { "status": "error", "message": "..." } on failure. Caller must free().
 char *coverage_path_planning_process(const char *input_environment_json);
+
+// POINT_T Helpers
+
+bool are_equal_points(const point_t a, const point_t b);
+
+// 'Destructors'
 
 void free_polygon(polygon_t *polygon);
 void free_input_environment(input_environment_t *env);
