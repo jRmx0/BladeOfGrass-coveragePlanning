@@ -18,6 +18,10 @@ class CanvasManager {
     this.vertexScale = 1; // scales point radius when showVertexNumbers is on
     this.showEvents = false; // debug toggle for events
     this.events = []; // last received events from backend
+    this.showCells = false; // debug toggle for cells
+    this.cells = []; // last received cells from backend
+    this.showCells = false; // debug toggle for cells
+    this.cells = []; // last received cells from backend
         
         // Notification system
         this.notification = null;
@@ -56,6 +60,9 @@ class CanvasManager {
         // Draw current obstacle being built
         if (this.currentObstacle) this.drawCurrentObstacle();
         
+    // Draw cells overlay (if enabled)
+    if (this.showCells && this.cells && this.cells.length > 0) this.drawCells();
+        
     // Draw events overlay (if enabled)
     if (this.showEvents && this.events && this.events.length > 0) this.drawEvents();
 
@@ -70,6 +77,15 @@ class CanvasManager {
             this.events = eventsArray;
         } else {
             this.events = [];
+        }
+        this.draw();
+    }
+
+    setCells(cellsArray) {
+        if (Array.isArray(cellsArray)) {
+            this.cells = cellsArray;
+        } else {
+            this.cells = [];
         }
         this.draw();
     }
@@ -104,6 +120,96 @@ class CanvasManager {
             this.ctx.fillStyle = color;
             this.ctx.fillText(t, x + r + 2, y + r + 2);
         }
+    }
+
+    drawCells() {
+        this.ctx.save();
+        
+        // Set drawing properties for cells
+        this.ctx.strokeStyle = '#000000'; // Black border for cells
+        this.ctx.lineWidth = Math.max(1, 2 / this.scale);
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; // Very light fill for visibility
+        
+        for (let i = 0; i < this.cells.length; i++) {
+            const cell = this.cells[i];
+            if (!cell) continue;
+            
+            // Draw cell boundary as a polygon following the corrected edge construction:
+            // c_begin -> ceiling_edges[0].end -> ceiling_edges[i] -> ceiling_edges[last].begin, c_end -> 
+            // c_end, f_begin -> f_begin, floor_edges[last].end -> floor_edges[i] -> floor_edges[0].begin, f_end -> f_end, c_begin
+            this.ctx.beginPath();
+            
+            // Start from ceiling begin
+            const cx1 = cell.c_begin.x * this.pixelsPerMeter;
+            const cy1 = cell.c_begin.y * this.pixelsPerMeter;
+            this.ctx.moveTo(cx1, cy1);
+            
+            // Draw ceiling edges: c_begin, ceiling_edges[0].end -> ceiling_edges[i] -> ceiling_edges[last].begin, c_end
+            if (cell.ceiling_edges && cell.ceiling_edges.length > 0) {
+                // Move to first ceiling edge end
+                const firstEdge = cell.ceiling_edges[0];
+                this.ctx.lineTo(firstEdge.end.x * this.pixelsPerMeter, firstEdge.end.y * this.pixelsPerMeter);
+                
+                // Draw through all ceiling edges
+                for (let j = 1; j < cell.ceiling_edges.length; j++) {
+                    const edge = cell.ceiling_edges[j];
+                    this.ctx.lineTo(edge.end.x * this.pixelsPerMeter, edge.end.y * this.pixelsPerMeter);
+                }
+            }
+            
+            // Draw to ceiling end: ceiling_edges[last].begin, c_end
+            const cx2 = cell.c_end.x * this.pixelsPerMeter;
+            const cy2 = cell.c_end.y * this.pixelsPerMeter;
+            this.ctx.lineTo(cx2, cy2);
+            
+            // Draw vertical connection: c_end, f_begin
+            const fx1 = cell.f_begin.x * this.pixelsPerMeter;
+            const fy1 = cell.f_begin.y * this.pixelsPerMeter;
+            this.ctx.lineTo(fx1, fy1);
+            
+            // Draw floor edges in reverse: f_begin, floor_edges[last].end -> floor_edges[i] -> floor_edges[0].begin, f_end
+            if (cell.floor_edges && cell.floor_edges.length > 0) {
+                // Move to last floor edge end (traverse in reverse)
+                const lastEdge = cell.floor_edges[cell.floor_edges.length - 1];
+                this.ctx.lineTo(lastEdge.end.x * this.pixelsPerMeter, lastEdge.end.y * this.pixelsPerMeter);
+                
+                // Draw through all floor edges in reverse order
+                for (let j = cell.floor_edges.length - 2; j >= 0; j--) {
+                    const edge = cell.floor_edges[j];
+                    this.ctx.lineTo(edge.end.x * this.pixelsPerMeter, edge.end.y * this.pixelsPerMeter);
+                }
+                
+                // Draw to first floor edge begin: floor_edges[0].begin
+                const firstEdge = cell.floor_edges[0];
+                this.ctx.lineTo(firstEdge.begin.x * this.pixelsPerMeter, firstEdge.begin.y * this.pixelsPerMeter);
+            }
+            
+            // Draw to floor end: floor_edges[0].begin, f_end
+            const fx2 = cell.f_end.x * this.pixelsPerMeter;
+            const fy2 = cell.f_end.y * this.pixelsPerMeter;
+            this.ctx.lineTo(fx2, fy2);
+            
+            // Close the path: f_end -> c_begin
+            this.ctx.closePath();
+            
+            // Fill and stroke the cell
+            this.ctx.fill();
+            this.ctx.stroke();
+            
+            // Draw cell number in the center
+            const centerX = (cx1 + cx2 + fx1 + fx2) / 4;
+            const centerY = (cy1 + cy2 + fy1 + fy2) / 4;
+            
+            this.ctx.save();
+            this.ctx.fillStyle = '#000000';
+            this.ctx.font = `bold ${Math.max(12, Math.round(16 / this.scale))}px Arial, sans-serif`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(cell.cell_number.toString(), centerX, centerY);
+            this.ctx.restore();
+        }
+        
+        this.ctx.restore();
     }
 
     drawObstacles() {

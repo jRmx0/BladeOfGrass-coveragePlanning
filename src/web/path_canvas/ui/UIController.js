@@ -34,13 +34,18 @@ class UIController {
         // Add vertex numbers toggle (switch) if present
         const toggleVertexSwitch = document.getElementById('toggleVertexNumbers');
         const toggleEventsSwitch = document.getElementById('toggleEvents');
+        const toggleCellsSwitch = document.getElementById('toggleCells');
         if (toggleVertexSwitch) {
             toggleVertexSwitch.addEventListener('change', (e) => {
-                // If enabling vertex numbers, disable events
+                // If enabling vertex numbers, disable events and cells
                 if (e.target.checked) {
                     if (toggleEventsSwitch && toggleEventsSwitch.checked) {
                         toggleEventsSwitch.checked = false;
                         this.canvasManager.showEvents = false;
+                    }
+                    if (toggleCellsSwitch && toggleCellsSwitch.checked) {
+                        toggleCellsSwitch.checked = false;
+                        this.canvasManager.showCells = false;
                     }
                 }
                 this.toggleVertexNumbers(e.target.checked);
@@ -48,14 +53,35 @@ class UIController {
         }
         if (toggleEventsSwitch) {
             toggleEventsSwitch.addEventListener('change', (e) => {
-                // If enabling events, disable vertex numbers
+                // If enabling events, disable vertex numbers and cells
                 if (e.target.checked) {
                     if (toggleVertexSwitch && toggleVertexSwitch.checked) {
                         toggleVertexSwitch.checked = false;
                         this.toggleVertexNumbers(false);
                     }
+                    if (toggleCellsSwitch && toggleCellsSwitch.checked) {
+                        toggleCellsSwitch.checked = false;
+                        this.canvasManager.showCells = false;
+                    }
                 }
                 this.canvasManager.showEvents = !!e.target.checked;
+                this.canvasManager.draw();
+            });
+        }
+        if (toggleCellsSwitch) {
+            toggleCellsSwitch.addEventListener('change', (e) => {
+                // If enabling cells, disable vertex numbers and events
+                if (e.target.checked) {
+                    if (toggleVertexSwitch && toggleVertexSwitch.checked) {
+                        toggleVertexSwitch.checked = false;
+                        this.toggleVertexNumbers(false);
+                    }
+                    if (toggleEventsSwitch && toggleEventsSwitch.checked) {
+                        toggleEventsSwitch.checked = false;
+                        this.canvasManager.showEvents = false;
+                    }
+                }
+                this.canvasManager.showCells = !!e.target.checked;
                 this.canvasManager.draw();
             });
         }
@@ -230,6 +256,7 @@ class UIController {
         
         // Clear event markers and reset toggle state
         this.clearEventsOverlay();
+        this.clearCellsOverlay();
         
         // Update UI
         this.uiStateManager.resetAllButtons();
@@ -259,6 +286,13 @@ class UIController {
                 // Enable events toggle
                 const es = document.getElementById('toggleEvents');
                 if (es) es.disabled = false;
+            }
+            // Store cells if present
+            if (resp && Array.isArray(resp.cell_list)) {
+                this.canvasManager.setCells(resp.cell_list);
+                // Enable cells toggle
+                const cs = document.getElementById('toggleCells');
+                if (cs) cs.disabled = false;
             }
             const msg = ok ? 'BCD run complete.' : 'BCD run failed.';
             this.canvasManager.showNotification(msg);
@@ -305,6 +339,7 @@ class UIController {
 
             // Clear any existing BCD events, since geometry changed
             this.clearEventsOverlay();
+            this.clearCellsOverlay();
             
             this.canvasManager.showNotification('Boundary deleted.');
             this.updateDisplay();
@@ -468,6 +503,7 @@ class UIController {
 
         // Clear event markers and reset toggle state
         this.clearEventsOverlay();
+        this.clearCellsOverlay();
         
         // Reset UI using state manager
         this.uiStateManager.resetAllButtons();
@@ -587,6 +623,7 @@ class UIController {
             this.inputEnvironment.obstaclePolygonList.splice(clickedObstacleIndex, 1);
             // Clear any existing BCD events, since geometry changed
             this.clearEventsOverlay();
+            this.clearCellsOverlay();
             this.canvasManager.showNotification('Obstacle deleted.');
             this.updateDisplay();
             this.canvasManager.draw();
@@ -803,6 +840,17 @@ class UIController {
         if (eventsToggle) {
             eventsToggle.checked = false;
             eventsToggle.disabled = true; // disabled until next export provides events
+        }
+    }
+
+    // Helper: clear BCD cells overlay and disable toggle until next run
+    clearCellsOverlay() {
+        this.canvasManager.setCells([]);
+        this.canvasManager.showCells = false;
+        const cellsToggle = document.getElementById('toggleCells');
+        if (cellsToggle) {
+            cellsToggle.checked = false;
+            cellsToggle.disabled = true; // disabled until next export provides cells
         }
     }
 

@@ -17,8 +17,9 @@ static void log_event_list(const bcd_event_list_t *event_list);
 static const char *event_type_to_string(bcd_event_type_t t);
 static const char *polygon_type_to_string(polygon_type_t t);
 static char *serialize_event_list_json(const bcd_event_list_t *event_list);
+static char *serialize_result_json(const bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) * cell_list);
 
-static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) *cell_list, int rc);
+static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) * cell_list, int rc);
 
 char *coverage_path_planning_process(const char *input_environment_json)
 {
@@ -51,9 +52,9 @@ char *coverage_path_planning_process(const char *input_environment_json)
 		printf("coverage_path_planning: BCD cell computation failed (code %d)\n", rc);
 		return err_cleanup(&env, &event_list, &cell_list, rc);
 	}
-	log_bcd_cell_list((const cvector_vector_type(bcd_cell_t) *) &cell_list);
-	
-	char *json_out = serialize_event_list_json(&event_list);
+	log_bcd_cell_list((const cvector_vector_type(bcd_cell_t) *)&cell_list);
+
+	char *json_out = serialize_result_json(&event_list, &cell_list);
 
 	err_cleanup(&env, &event_list, &cell_list, rc);
 
@@ -142,19 +143,32 @@ static const char *event_type_to_string(bcd_event_type_t t)
 {
 	switch (t)
 	{
-	case B_INIT: return "B_INIT";
-	case B_DEINIT: return "B_DEINIT";
-	case B_IN: return "B_IN";
-	case B_OUT: return "B_OUT";
-	case B_SIDE_IN: return "B_SIDE_IN";
-	case B_SIDE_OUT: return "B_SIDE_OUT";
-	case IN: return "IN";
-	case SIDE_IN: return "SIDE_IN";
-	case OUT: return "OUT";
-	case SIDE_OUT: return "SIDE_OUT";
-	case FLOOR: return "FLOOR";
-	case CEILING: return "CEILING";
-	default: return "UNKNOWN";
+	case B_INIT:
+		return "B_INIT";
+	case B_DEINIT:
+		return "B_DEINIT";
+	case B_IN:
+		return "B_IN";
+	case B_OUT:
+		return "B_OUT";
+	case B_SIDE_IN:
+		return "B_SIDE_IN";
+	case B_SIDE_OUT:
+		return "B_SIDE_OUT";
+	case IN:
+		return "IN";
+	case SIDE_IN:
+		return "SIDE_IN";
+	case OUT:
+		return "OUT";
+	case SIDE_OUT:
+		return "SIDE_OUT";
+	case FLOOR:
+		return "FLOOR";
+	case CEILING:
+		return "CEILING";
+	default:
+		return "UNKNOWN";
 	}
 }
 
@@ -162,9 +176,12 @@ static const char *polygon_type_to_string(polygon_type_t t)
 {
 	switch (t)
 	{
-	case BOUNDARY: return "BOUNDARY";
-	case OBSTACLE: return "OBSTACLE";
-	default: return "UNKNOWN";
+	case BOUNDARY:
+		return "BOUNDARY";
+	case OBSTACLE:
+		return "OBSTACLE";
+	default:
+		return "UNKNOWN";
 	}
 }
 
@@ -213,6 +230,151 @@ static char *serialize_event_list_json(const bcd_event_list_t *event_list)
 			cJSON_AddItemToObject(jev, "ceiling_edge", jceil);
 
 			cJSON_AddItemToArray(arr, jev);
+		}
+	}
+
+	char *json = cJSON_PrintUnformatted(root);
+	cJSON_Delete(root);
+	return json; // caller must free
+}
+
+static char *serialize_result_json(const bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) * cell_list)
+{
+	cJSON *root = cJSON_CreateObject();
+	cJSON_AddStringToObject(root, "status", "ok");
+
+	// Add event list
+	cJSON *event_arr = cJSON_CreateArray();
+	cJSON_AddItemToObject(root, "event_list", event_arr);
+
+	if (event_list && event_list->bcd_events && event_list->length > 0)
+	{
+		for (int i = 0; i < event_list->length; ++i)
+		{
+			const bcd_event_t *ev = &event_list->bcd_events[i];
+			cJSON *jev = cJSON_CreateObject();
+			cJSON_AddStringToObject(jev, "polygon_type", polygon_type_to_string(ev->polygon_type));
+			cJSON *jv = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jv, "x", ev->polygon_vertex.x);
+			cJSON_AddNumberToObject(jv, "y", ev->polygon_vertex.y);
+			cJSON_AddItemToObject(jev, "vertex", jv);
+			cJSON_AddStringToObject(jev, "event_type", event_type_to_string(ev->bcd_event_type));
+
+			// floor edge
+			cJSON *jfloor = cJSON_CreateObject();
+			cJSON *jfb = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jfb, "x", ev->floor_edge.begin.x);
+			cJSON_AddNumberToObject(jfb, "y", ev->floor_edge.begin.y);
+			cJSON_AddItemToObject(jfloor, "begin", jfb);
+			cJSON *jfe = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jfe, "x", ev->floor_edge.end.x);
+			cJSON_AddNumberToObject(jfe, "y", ev->floor_edge.end.y);
+			cJSON_AddItemToObject(jfloor, "end", jfe);
+			cJSON_AddItemToObject(jev, "floor_edge", jfloor);
+
+			// ceiling edge
+			cJSON *jceil = cJSON_CreateObject();
+			cJSON *jcb = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jcb, "x", ev->ceiling_edge.begin.x);
+			cJSON_AddNumberToObject(jcb, "y", ev->ceiling_edge.begin.y);
+			cJSON_AddItemToObject(jceil, "begin", jcb);
+			cJSON *jce = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jce, "x", ev->ceiling_edge.end.x);
+			cJSON_AddNumberToObject(jce, "y", ev->ceiling_edge.end.y);
+			cJSON_AddItemToObject(jceil, "end", jce);
+			cJSON_AddItemToObject(jev, "ceiling_edge", jceil);
+
+			cJSON_AddItemToArray(event_arr, jev);
+		}
+	}
+
+	// Add cell list
+	cJSON *cell_arr = cJSON_CreateArray();
+	cJSON_AddItemToObject(root, "cell_list", cell_arr);
+
+	if (cell_list && *cell_list)
+	{
+		int cell_count = cvector_size(*cell_list);
+		for (int i = 0; i < cell_count; ++i)
+		{
+			const bcd_cell_t *cell = &(*cell_list)[i];
+			cJSON *jcell = cJSON_CreateObject();
+
+			// Add cell number
+			cJSON_AddNumberToObject(jcell, "cell_number", i);
+
+			// Add ceiling boundary
+			cJSON *jc_begin = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jc_begin, "x", cell->c_begin.x);
+			cJSON_AddNumberToObject(jc_begin, "y", cell->c_begin.y);
+			cJSON_AddItemToObject(jcell, "c_begin", jc_begin);
+
+			cJSON *jc_end = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jc_end, "x", cell->c_end.x);
+			cJSON_AddNumberToObject(jc_end, "y", cell->c_end.y);
+			cJSON_AddItemToObject(jcell, "c_end", jc_end);
+
+			// Add floor boundary
+			cJSON *jf_begin = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jf_begin, "x", cell->f_begin.x);
+			cJSON_AddNumberToObject(jf_begin, "y", cell->f_begin.y);
+			cJSON_AddItemToObject(jcell, "f_begin", jf_begin);
+
+			cJSON *jf_end = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jf_end, "x", cell->f_end.x);
+			cJSON_AddNumberToObject(jf_end, "y", cell->f_end.y);
+			cJSON_AddItemToObject(jcell, "f_end", jf_end);
+
+			// Add ceiling edges
+			cJSON *ceiling_edges = cJSON_CreateArray();
+			if (cell->ceiling_edge_list)
+			{
+				int ceiling_edge_count = cvector_size(cell->ceiling_edge_list);
+				for (int j = 0; j < ceiling_edge_count; ++j)
+				{
+					const polygon_edge_t *edge = &cell->ceiling_edge_list[j];
+					cJSON *jedge = cJSON_CreateObject();
+					cJSON *jbegin = cJSON_CreateObject();
+					cJSON_AddNumberToObject(jbegin, "x", edge->begin.x);
+					cJSON_AddNumberToObject(jbegin, "y", edge->begin.y);
+					cJSON_AddItemToObject(jedge, "begin", jbegin);
+					cJSON *jend = cJSON_CreateObject();
+					cJSON_AddNumberToObject(jend, "x", edge->end.x);
+					cJSON_AddNumberToObject(jend, "y", edge->end.y);
+					cJSON_AddItemToObject(jedge, "end", jend);
+					cJSON_AddItemToArray(ceiling_edges, jedge);
+				}
+			}
+			cJSON_AddItemToObject(jcell, "ceiling_edges", ceiling_edges);
+
+			// Add floor edges
+			cJSON *floor_edges = cJSON_CreateArray();
+			if (cell->floor_edge_list)
+			{
+				int floor_edge_count = cvector_size(cell->floor_edge_list);
+				for (int j = 0; j < floor_edge_count; ++j)
+				{
+					const polygon_edge_t *edge = &cell->floor_edge_list[j];
+					cJSON *jedge = cJSON_CreateObject();
+					cJSON *jbegin = cJSON_CreateObject();
+					cJSON_AddNumberToObject(jbegin, "x", edge->begin.x);
+					cJSON_AddNumberToObject(jbegin, "y", edge->begin.y);
+					cJSON_AddItemToObject(jedge, "begin", jbegin);
+					cJSON *jend = cJSON_CreateObject();
+					cJSON_AddNumberToObject(jend, "x", edge->end.x);
+					cJSON_AddNumberToObject(jend, "y", edge->end.y);
+					cJSON_AddItemToObject(jedge, "end", jend);
+					cJSON_AddItemToArray(floor_edges, jedge);
+				}
+			}
+			cJSON_AddItemToObject(jcell, "floor_edges", floor_edges);
+
+			// Add cell properties
+			cJSON_AddBoolToObject(jcell, "open", cell->open);
+			cJSON_AddBoolToObject(jcell, "visited", cell->visited);
+			cJSON_AddBoolToObject(jcell, "cleaned", cell->cleaned);
+
+			cJSON_AddItemToArray(cell_arr, jcell);
 		}
 	}
 
@@ -359,7 +521,7 @@ static void log_event_list(const bcd_event_list_t *event_list)
 	}
 }
 
-static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) *cell_list, int rc)
+static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) * cell_list, int rc)
 {
 	free_input_environment(env);
 	free_bcd_event_list(event_list);
@@ -378,7 +540,7 @@ static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list,
 
 bool are_equal_points(point_t a, point_t b)
 {
-    return a.x == b.x && a.y == b.y;
+	return a.x == b.x && a.y == b.y;
 }
 
 // 'Destructors'
@@ -420,4 +582,3 @@ void free_input_environment(input_environment_t *env)
 	env->obstacles = NULL;
 	env->obstacle_count = 0;
 }
-
