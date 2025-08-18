@@ -196,9 +196,9 @@ class CanvasManager {
             this.ctx.fill();
             this.ctx.stroke();
             
-            // Draw cell number in the center
-            const centerX = (cx1 + cx2 + fx1 + fx2) / 4;
-            const centerY = (cy1 + cy2 + fy1 + fy2) / 4;
+            // Draw cell number at the spot furthest from edges (visual center)
+            const centerX = this.findCellVisualCenter(cell).x;
+            const centerY = this.findCellVisualCenter(cell).y;
             
             this.ctx.save();
             this.ctx.fillStyle = '#000000';
@@ -210,6 +210,162 @@ class CanvasManager {
         }
         
         this.ctx.restore();
+    }
+
+    findCellVisualCenter(cell) {
+        // Simple approach: find the centroid of the cell's bounding rectangle
+        // and then adjust it to be more central within the actual cell shape
+        
+        const cx1 = cell.c_begin.x * this.pixelsPerMeter;
+        const cy1 = cell.c_begin.y * this.pixelsPerMeter;
+        const cx2 = cell.c_end.x * this.pixelsPerMeter;
+        const cy2 = cell.c_end.y * this.pixelsPerMeter;
+        const fx1 = cell.f_begin.x * this.pixelsPerMeter;
+        const fy1 = cell.f_begin.y * this.pixelsPerMeter;
+        const fx2 = cell.f_end.x * this.pixelsPerMeter;
+        const fy2 = cell.f_end.y * this.pixelsPerMeter;
+        
+        // Calculate bounding box
+        const minX = Math.min(cx1, cx2, fx1, fx2);
+        const maxX = Math.max(cx1, cx2, fx1, fx2);
+        const minY = Math.min(cy1, cy2, fy1, fy2);
+        const maxY = Math.max(cy1, cy2, fy1, fy2);
+        
+        // Get all edge points for distance calculations
+        const edgePoints = [];
+        
+        // Add ceiling edge points
+        if (cell.ceiling_edges && cell.ceiling_edges.length > 0) {
+            edgePoints.push({ x: cx1, y: cy1 });
+            for (const edge of cell.ceiling_edges) {
+                edgePoints.push({ 
+                    x: edge.end.x * this.pixelsPerMeter, 
+                    y: edge.end.y * this.pixelsPerMeter 
+                });
+            }
+            edgePoints.push({ x: cx2, y: cy2 });
+        }
+        
+        // Add floor edge points (in reverse)
+        if (cell.floor_edges && cell.floor_edges.length > 0) {
+            edgePoints.push({ x: fx1, y: fy1 });
+            for (let i = cell.floor_edges.length - 1; i >= 0; i--) {
+                const edge = cell.floor_edges[i];
+                edgePoints.push({ 
+                    x: edge.end.x * this.pixelsPerMeter, 
+                    y: edge.end.y * this.pixelsPerMeter 
+                });
+            }
+            if (cell.floor_edges.length > 0) {
+                const firstEdge = cell.floor_edges[0];
+                edgePoints.push({ 
+                    x: firstEdge.begin.x * this.pixelsPerMeter, 
+                    y: firstEdge.begin.y * this.pixelsPerMeter 
+                });
+            }
+            edgePoints.push({ x: fx2, y: fy2 });
+        }
+        
+        // Sample grid points within bounding box and find the one furthest from edges
+        const gridSize = 10; // 10x10 grid
+        let bestPoint = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+        let maxMinDistance = 0;
+        
+        for (let i = 0; i <= gridSize; i++) {
+            for (let j = 0; j <= gridSize; j++) {
+                const testX = minX + (maxX - minX) * (i / gridSize);
+                const testY = minY + (maxY - minY) * (j / gridSize);
+                
+                // Check if point is inside the cell (simple polygon test)
+                if (this.isPointInCell(testX, testY, cell)) {
+                    // Find minimum distance to any edge
+                    let minDistanceToEdge = Infinity;
+                    
+                    for (let k = 0; k < edgePoints.length; k++) {
+                        const p1 = edgePoints[k];
+                        const p2 = edgePoints[(k + 1) % edgePoints.length];
+                        
+                        const distance = this.distanceToLineSegment(testX, testY, p1.x, p1.y, p2.x, p2.y);
+                        minDistanceToEdge = Math.min(minDistanceToEdge, distance);
+                    }
+                    
+                    if (minDistanceToEdge > maxMinDistance) {
+                        maxMinDistance = minDistanceToEdge;
+                        bestPoint = { x: testX, y: testY };
+                    }
+                }
+            }
+        }
+        
+        return bestPoint;
+    }
+
+    isPointInCell(x, y, cell) {
+        // Simple point-in-polygon test using ray casting
+        // Build the polygon points in the correct order
+        const polygon = [];
+        
+        // Add ceiling path
+        polygon.push({ x: cell.c_begin.x * this.pixelsPerMeter, y: cell.c_begin.y * this.pixelsPerMeter });
+        
+        if (cell.ceiling_edges && cell.ceiling_edges.length > 0) {
+            for (const edge of cell.ceiling_edges) {
+                polygon.push({ x: edge.end.x * this.pixelsPerMeter, y: edge.end.y * this.pixelsPerMeter });
+            }
+        }
+        
+        polygon.push({ x: cell.c_end.x * this.pixelsPerMeter, y: cell.c_end.y * this.pixelsPerMeter });
+        polygon.push({ x: cell.f_begin.x * this.pixelsPerMeter, y: cell.f_begin.y * this.pixelsPerMeter });
+        
+        if (cell.floor_edges && cell.floor_edges.length > 0) {
+            const lastEdge = cell.floor_edges[cell.floor_edges.length - 1];
+            polygon.push({ x: lastEdge.end.x * this.pixelsPerMeter, y: lastEdge.end.y * this.pixelsPerMeter });
+            
+            for (let i = cell.floor_edges.length - 2; i >= 0; i--) {
+                const edge = cell.floor_edges[i];
+                polygon.push({ x: edge.end.x * this.pixelsPerMeter, y: edge.end.y * this.pixelsPerMeter });
+            }
+            
+            const firstEdge = cell.floor_edges[0];
+            polygon.push({ x: firstEdge.begin.x * this.pixelsPerMeter, y: firstEdge.begin.y * this.pixelsPerMeter });
+        }
+        
+        polygon.push({ x: cell.f_end.x * this.pixelsPerMeter, y: cell.f_end.y * this.pixelsPerMeter });
+        
+        // Ray casting algorithm
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            if (((polygon[i].y > y) !== (polygon[j].y > y)) &&
+                (x < (polygon[j].x - polygon[i].x) * (y - polygon[i].y) / (polygon[j].y - polygon[i].y) + polygon[i].x)) {
+                inside = !inside;
+            }
+        }
+        return inside;
+    }
+
+    distanceToLineSegment(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        
+        if (length === 0) {
+            // Point to point distance
+            const dpx = px - x1;
+            const dpy = py - y1;
+            return Math.sqrt(dpx * dpx + dpy * dpy);
+        }
+        
+        // Calculate the t parameter for the closest point on the line segment
+        const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / (length * length)));
+        
+        // Find the closest point on the segment
+        const closestX = x1 + t * dx;
+        const closestY = y1 + t * dy;
+        
+        // Return distance to closest point
+        const dpx = px - closestX;
+        const dpy = py - closestY;
+        return Math.sqrt(dpx * dpx + dpy * dpy);
     }
 
     drawObstacles() {
