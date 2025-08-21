@@ -52,6 +52,7 @@ char *coverage_path_planning_process(const char *input_environment_json)
 		return err_cleanup(&env, &event_list, &cell_list, rc);
 	}
 	printf("coverage_path_planning: successfully generated %d cells\n", cvector_size(cell_list));
+	log_bcd_cell_list((const cvector_vector_type(bcd_cell_t) *) &cell_list);
 
 	char *json_out = serialize_result_json(&event_list, &cell_list);
 

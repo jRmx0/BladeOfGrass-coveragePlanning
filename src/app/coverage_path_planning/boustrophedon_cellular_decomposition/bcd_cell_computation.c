@@ -814,12 +814,8 @@ void log_bcd_cell_list(const cvector_vector_type(bcd_cell_t) * cell_list)
             printf("    floor_edges: NULL\n");
         }
 
-        printf("    neighbor_list: head=%p, tail=%p, count=%d\n",
-               (void *)cell->neighbor_list.head,
-               (void *)cell->neighbor_list.tail,
-               cell->neighbor_list.count);
+        printf("    neighbor_list: count=%d\n", cell->neighbor_list.count);
 
-        // Log all neighbor nodes in the list
         if (cell->neighbor_list.head)
         {
             printf("    neighbor nodes:\n");
@@ -827,16 +823,37 @@ void log_bcd_cell_list(const cvector_vector_type(bcd_cell_t) * cell_list)
             int node_index = 0;
             while (current)
             {
-                printf("      [%d]: node=%p, cell=%p", node_index, (void *)current, (void *)current->cell);
+                int cell_index = -1;
                 if (current->cell)
                 {
+                    for (size_t k = 0; k < cvector_size(*cell_list); ++k)
+                    {
+                        if (&(*cell_list)[k] == current->cell)
+                        {
+                            cell_index = (int)k;
+                            break;
+                        }
+                    }
+                    
+                    if (cell_index != -1)
+                    {
+                        printf("      [%d]: cell_index=%d", node_index, cell_index);
+                    }
+                    else
+                    {
+                        printf("      [%d]: cell_index=-1 (ptr=%p)", node_index, (void*)current->cell);
+                    }
+                    
                     printf(" cell_pos=(%.2f,%.2f)", current->cell->c_begin.x, current->cell->c_begin.y);
                 }
-                printf(" prev=%p, next=%p\n", (void *)current->prev, (void *)current->next);
+                else
+                {
+                    printf("      [%d]: cell_index=-1 (NULL cell)", node_index);
+                }
+                printf("\n");
                 current = current->next;
                 node_index++;
 
-                // Safety check to prevent infinite loops
                 if (node_index > cell->neighbor_list.count + 1)
                 {
                     printf("      [WARNING]: Potential infinite loop detected in neighbor list!\n");
