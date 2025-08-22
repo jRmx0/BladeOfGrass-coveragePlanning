@@ -71,8 +71,8 @@ static void update_bcd_cell(bcd_cell_t *cell,
                             point_t c_pt,
                             point_t f_pt,
                             bcd_event_type_t evt_type,
-                            bcd_cell_t *top_cell,
-                            bcd_cell_t *bottom_cell);
+                            int top_cell_index,
+                            int bottom_cell_index);
 
 static float calc_evt_to_edge_dist(const point_t evt_vertex,
                                    const polygon_edge_t cell_edge,
@@ -81,10 +81,10 @@ static float calc_evt_to_edge_dist(const point_t evt_vertex,
 // --- NEIGHBOR_LIST HELPERS
 
 static void add_head_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
-                                        bcd_cell_t *new_head);
+                                        int cell_index);
 
 static void add_tail_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
-                                        bcd_cell_t *new_tail);
+                                        int cell_index);
 
 static void free_neighbor_list(bcd_neighbor_list_t *neighbor_list);
 
@@ -178,10 +178,8 @@ static int handle_in(const bcd_event_t curr_evt,
         return -3;
     }
 
-    // Store the index of the previous cell before vector operations
     size_t prev_cell_index = prev_cell - &(*cell_list)[0];
 
-    // Safety checks for edge lists
     if (cvector_size(prev_cell->ceiling_edge_list) == 0)
     {
         printf("Error: prev_cell has empty ceiling_edge_list in handle_in\n");
@@ -193,13 +191,16 @@ static int handle_in(const bcd_event_t curr_evt,
         return -5;
     }
 
+    bcd_neighbor_list_t top_nl = {0};
+    add_head_cell_neighbor_list(&top_nl, (int)prev_cell_index);
+
     bcd_cell_t top_cell = fill_bcd_cell(c_point,
                                         *cvector_back(prev_cell->ceiling_edge_list),
                                         (point_t){0},
                                         (point_t){0},
                                         curr_evt.floor_edge,
                                         curr_evt.polygon_vertex,
-                                        (bcd_neighbor_list_t){0},
+                                        top_nl,
                                         true,
                                         false,
                                         false);
@@ -207,13 +208,16 @@ static int handle_in(const bcd_event_t curr_evt,
     cvector_push_back(*cell_list, top_cell);
     size_t top_cell_index = cvector_size(*cell_list) - 1;
 
+    bcd_neighbor_list_t bottom_nl = {0};
+    add_head_cell_neighbor_list(&bottom_nl, (int)prev_cell_index);
+
     bcd_cell_t bottom_cell = fill_bcd_cell(curr_evt.polygon_vertex,
                                            curr_evt.ceiling_edge,
                                            (point_t){0},
                                            (point_t){0},
                                            *cvector_back(prev_cell->floor_edge_list),
                                            f_point,
-                                           (bcd_neighbor_list_t){0},
+                                           bottom_nl,
                                            true,
                                            false,
                                            false);
@@ -229,8 +233,8 @@ static int handle_in(const bcd_event_t curr_evt,
                     c_point,
                     f_point,
                     IN,
-                    top_cell_ptr,
-                    bottom_cell_ptr);
+                    (int)top_cell_index,
+                    (int)bottom_cell_index);
 
     return 0;
 }
@@ -332,8 +336,8 @@ static int handle_side_out(const bcd_event_t curr_evt,
                     curr_evt.polygon_vertex,
                     curr_evt.polygon_vertex,
                     SIDE_OUT,
-                    NULL,
-                    NULL);
+                    -1,
+                    -1);
 
     return 0;
 }
@@ -347,19 +351,11 @@ static int handle_out(const bcd_event_t curr_evt,
 
     out_find_top_cell(curr_evt, cell_list, &top_cell, &c_pt);
 
-    // Safety check for valid top_cell
     if (top_cell == NULL)
     {
         printf("Error: Failed to find top cell in handle_out\n");
         return -1;
     }
-
-    update_bcd_cell(top_cell,
-                    c_pt,
-                    curr_evt.polygon_vertex,
-                    OUT,
-                    NULL,
-                    NULL);
 
     // BOTTOM CELL
     bcd_cell_t *bottom_cell = NULL;
@@ -367,25 +363,35 @@ static int handle_out(const bcd_event_t curr_evt,
 
     out_find_bottom_cell(curr_evt, cell_list, &bottom_cell, &f_pt);
 
-    // Safety check for valid bottom_cell
     if (bottom_cell == NULL)
     {
         printf("Error: Failed to find bottom cell in handle_out\n");
         return -1;
     }
 
-    update_bcd_cell(bottom_cell,
-                    curr_evt.polygon_vertex,
-                    f_pt,
-                    OUT,
-                    NULL,
-                    NULL);
-
     // NEW CELL
     bcd_cell_t new_cell;
     bcd_neighbor_list_t new_nl = {0};
-    add_tail_cell_neighbor_list(&new_nl, top_cell);
-    add_tail_cell_neighbor_list(&new_nl, bottom_cell);
+    
+    // Find indices of top_cell and bottom_cell
+    int top_cell_index = -1;
+    int bottom_cell_index = -1;
+    
+    for (size_t k = 0; k < cvector_size(*cell_list); ++k) {
+        if (&(*cell_list)[k] == top_cell) {
+            top_cell_index = (int)k;
+        }
+        if (&(*cell_list)[k] == bottom_cell) {
+            bottom_cell_index = (int)k;
+        }
+    }
+    
+    if (top_cell_index != -1) {
+        add_tail_cell_neighbor_list(&new_nl, top_cell_index);
+    }
+    if (bottom_cell_index != -1) {
+        add_tail_cell_neighbor_list(&new_nl, bottom_cell_index);
+    }
 
     new_cell = fill_bcd_cell(c_pt,
                              *cvector_back(top_cell->ceiling_edge_list),
@@ -399,6 +405,23 @@ static int handle_out(const bcd_event_t curr_evt,
                              false);
 
     cvector_push_back(*cell_list, new_cell);
+
+    // UPDATING CELLS
+    size_t new_cell_index = cvector_size(*cell_list) - 1;
+
+    update_bcd_cell(top_cell,
+                    c_pt,
+                    curr_evt.polygon_vertex,
+                    OUT,
+                    (int)new_cell_index,
+                    -1);
+
+    update_bcd_cell(bottom_cell,
+                    curr_evt.polygon_vertex,
+                    f_pt,
+                    OUT,
+                    (int)new_cell_index,
+                    -1);
 
     return 0;
 }
@@ -613,8 +636,8 @@ static void update_bcd_cell(bcd_cell_t *cell,
                             point_t c_pt,
                             point_t f_pt,
                             bcd_event_type_t evt_type,
-                            bcd_cell_t *top_cell,
-                            bcd_cell_t *bottom_cell)
+                            int top_cell_index,
+                            int bottom_cell_index)
 {
     cell->c_end = c_pt;
     cell->f_begin = f_pt;
@@ -623,18 +646,18 @@ static void update_bcd_cell(bcd_cell_t *cell,
 
     if (evt_type == IN)
     {
-        if (top_cell != NULL)
-            add_head_cell_neighbor_list(neighbor_list, top_cell);
-        if (bottom_cell != NULL)
-            add_head_cell_neighbor_list(neighbor_list, bottom_cell);
+        if (top_cell_index >= 0)
+            add_head_cell_neighbor_list(neighbor_list, top_cell_index);
+        if (bottom_cell_index >= 0)
+            add_head_cell_neighbor_list(neighbor_list, bottom_cell_index);
     }
 
     if (evt_type == OUT)
     {
-        if (top_cell != NULL)
-            add_tail_cell_neighbor_list(neighbor_list, top_cell);
-        if (bottom_cell != NULL)
-            add_tail_cell_neighbor_list(neighbor_list, bottom_cell);
+        if (top_cell_index >= 0)
+            add_tail_cell_neighbor_list(neighbor_list, top_cell_index);
+        if (bottom_cell_index >= 0)
+            add_tail_cell_neighbor_list(neighbor_list, bottom_cell_index);
     }
 
     cell->open = false;
@@ -679,16 +702,16 @@ static float calc_evt_to_edge_dist(point_t evt_vertex, polygon_edge_t cell_edge,
 // --- NEIGHBOR_LIST HELPERS
 
 static void add_head_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
-                                        bcd_cell_t *new_head)
+                                        int cell_index)
 {
-    if (!neighbor_list || !new_head)
+    if (!neighbor_list || cell_index < 0)
         return;
 
     bcd_neighbor_node_t *new_node = (bcd_neighbor_node_t *)malloc(sizeof(bcd_neighbor_node_t));
     if (!new_node)
         return;
 
-    new_node->cell = new_head;
+    new_node->cell_index = cell_index;
     new_node->prev = NULL;
     new_node->next = neighbor_list->head;
 
@@ -708,16 +731,16 @@ static void add_head_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
 }
 
 static void add_tail_cell_neighbor_list(bcd_neighbor_list_t *neighbor_list,
-                                        bcd_cell_t *new_tail)
+                                        int cell_index)
 {
-    if (!neighbor_list || !new_tail)
+    if (!neighbor_list || cell_index < 0)
         return;
 
     bcd_neighbor_node_t *new_node = (bcd_neighbor_node_t *)malloc(sizeof(bcd_neighbor_node_t));
     if (!new_node)
         return;
 
-    new_node->cell = new_tail;
+    new_node->cell_index = cell_index;
     new_node->next = NULL;
     new_node->prev = neighbor_list->tail;
 
@@ -823,32 +846,18 @@ void log_bcd_cell_list(const cvector_vector_type(bcd_cell_t) * cell_list)
             int node_index = 0;
             while (current)
             {
-                int cell_index = -1;
-                if (current->cell)
+                int cell_index = current->cell_index;
+                
+                if (cell_index >= 0 && cell_index < (int)cvector_size(*cell_list))
                 {
-                    for (size_t k = 0; k < cvector_size(*cell_list); ++k)
-                    {
-                        if (&(*cell_list)[k] == current->cell)
-                        {
-                            cell_index = (int)k;
-                            break;
-                        }
-                    }
-                    
-                    if (cell_index != -1)
-                    {
-                        printf("      [%d]: cell_index=%d", node_index, cell_index);
-                    }
-                    else
-                    {
-                        printf("      [%d]: cell_index=-1 (ptr=%p)", node_index, (void*)current->cell);
-                    }
-                    
-                    printf(" cell_pos=(%.2f,%.2f)", current->cell->c_begin.x, current->cell->c_begin.y);
+                    const bcd_cell_t *neighbor_cell = &(*cell_list)[cell_index];
+                    printf("      [%d]: cell_index=%d cell_pos=(%.2f,%.2f)", 
+                           node_index, cell_index, 
+                           neighbor_cell->c_begin.x, neighbor_cell->c_begin.y);
                 }
                 else
                 {
-                    printf("      [%d]: cell_index=-1 (NULL cell)", node_index);
+                    printf("      [%d]: cell_index=%d (INVALID INDEX)", node_index, cell_index);
                 }
                 printf("\n");
                 current = current->next;

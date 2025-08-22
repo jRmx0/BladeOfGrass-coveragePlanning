@@ -7,7 +7,7 @@ typedef struct bcd_cell_t bcd_cell_t;
 typedef struct bcd_neighbor_node_t bcd_neighbor_node_t;
 
 typedef struct bcd_neighbor_node_t {
-    bcd_cell_t *cell;
+    int cell_index;
     bcd_neighbor_node_t *prev;
     bcd_neighbor_node_t *next;
 } bcd_neighbor_node_t;
