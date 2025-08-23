@@ -22,7 +22,7 @@ static int handle_in(const bcd_event_t curr_evt,
 
 static void in_find_prev_cell(const bcd_event_t curr_evt,
                               cvector_vector_type(bcd_cell_t) * cell_list,
-                              bcd_cell_t **prev_cell,
+                              int *prev_cell_index,
                               point_t *c_pt,
                               point_t *f_pt);
 
@@ -38,12 +38,12 @@ static int handle_out(const bcd_event_t curr_evt,
 
 static void out_find_top_cell(const bcd_event_t curr_evt,
                               cvector_vector_type(bcd_cell_t) * cell_list,
-                              bcd_cell_t **top_cell,
+                              int *top_cell_index,
                               point_t *c_pt);
 
 static void out_find_bottom_cell(const bcd_event_t curr_evt,
                                  cvector_vector_type(bcd_cell_t) * cell_list,
-                                 bcd_cell_t **bottom_cell,
+                                 int *bottom_cell_index,
                                  point_t *f_pt);
 
 // ---
@@ -67,7 +67,8 @@ static bcd_cell_t fill_bcd_cell(point_t c_begin,
                                 bool visited,
                                 bool cleaned);
 
-static void update_bcd_cell(bcd_cell_t *cell,
+static void update_bcd_cell(cvector_vector_type(bcd_cell_t) * cell_list,
+                            int target_cell_index,
                             point_t c_pt,
                             point_t f_pt,
                             bcd_event_type_t evt_type,
@@ -167,35 +168,37 @@ static int handle_side_in(const bcd_event_t curr_evt,
 static int handle_in(const bcd_event_t curr_evt,
                      cvector_vector_type(bcd_cell_t) * cell_list)
 {
-    bcd_cell_t *prev_cell = NULL;
+    // PREV CELL
+    
+    int prev_cell_index = -1;
     point_t c_point;
     point_t f_point;
 
-    in_find_prev_cell(curr_evt, cell_list, &prev_cell, &c_point, &f_point);
-    if (prev_cell == NULL)
+    in_find_prev_cell(curr_evt, cell_list, &prev_cell_index, &c_point, &f_point);
+    if (prev_cell_index == -1)
     {
         printf("Error: No previous cell found for IN event\n");
         return -3;
     }
 
-    size_t prev_cell_index = prev_cell - &(*cell_list)[0];
-
-    if (cvector_size(prev_cell->ceiling_edge_list) == 0)
+    if (cvector_size((*cell_list)[prev_cell_index].ceiling_edge_list) == 0)
     {
         printf("Error: prev_cell has empty ceiling_edge_list in handle_in\n");
         return -4;
     }
-    if (cvector_size(prev_cell->floor_edge_list) == 0)
+    if (cvector_size((*cell_list)[prev_cell_index].floor_edge_list) == 0)
     {
         printf("Error: prev_cell has empty floor_edge_list in handle_in\n");
         return -5;
     }
 
+    // TOP CELL
+
     bcd_neighbor_list_t top_nl = {0};
-    add_head_cell_neighbor_list(&top_nl, (int)prev_cell_index);
+    add_head_cell_neighbor_list(&top_nl, prev_cell_index);
 
     bcd_cell_t top_cell = fill_bcd_cell(c_point,
-                                        *cvector_back(prev_cell->ceiling_edge_list),
+                                        *cvector_back((*cell_list)[prev_cell_index].ceiling_edge_list),
                                         (point_t){0},
                                         (point_t){0},
                                         curr_evt.floor_edge,
@@ -207,15 +210,17 @@ static int handle_in(const bcd_event_t curr_evt,
 
     cvector_push_back(*cell_list, top_cell);
     size_t top_cell_index = cvector_size(*cell_list) - 1;
+    
+    // BOTTOM CELL
 
     bcd_neighbor_list_t bottom_nl = {0};
-    add_head_cell_neighbor_list(&bottom_nl, (int)prev_cell_index);
+    add_head_cell_neighbor_list(&bottom_nl, prev_cell_index);
 
     bcd_cell_t bottom_cell = fill_bcd_cell(curr_evt.polygon_vertex,
                                            curr_evt.ceiling_edge,
                                            (point_t){0},
                                            (point_t){0},
-                                           *cvector_back(prev_cell->floor_edge_list),
+                                           *cvector_back((*cell_list)[prev_cell_index].floor_edge_list),
                                            f_point,
                                            bottom_nl,
                                            true,
@@ -224,12 +229,11 @@ static int handle_in(const bcd_event_t curr_evt,
 
     cvector_push_back(*cell_list, bottom_cell);
     size_t bottom_cell_index = cvector_size(*cell_list) - 1;
+    
+    // PREV CELL
 
-    prev_cell = &(*cell_list)[prev_cell_index];
-    bcd_cell_t *top_cell_ptr = &(*cell_list)[top_cell_index];
-    bcd_cell_t *bottom_cell_ptr = &(*cell_list)[bottom_cell_index];
-
-    update_bcd_cell(prev_cell,
+    update_bcd_cell(cell_list,
+                    prev_cell_index,
                     c_point,
                     f_point,
                     IN,
@@ -243,7 +247,7 @@ static int handle_in(const bcd_event_t curr_evt,
 
 static void in_find_prev_cell(const bcd_event_t curr_evt,
                               cvector_vector_type(bcd_cell_t) * cell_list,
-                              bcd_cell_t **prev_cell,
+                              int *prev_cell_index,
                               point_t *c_pt,
                               point_t *f_pt)
 {
@@ -255,28 +259,26 @@ static void in_find_prev_cell(const bcd_event_t curr_evt,
 
     float min_evt_to_ceil_dist = INFINITY;
     float min_evt_to_floor_dist = INFINITY;
-    bcd_cell_t *closest_cell = NULL;
+
+    int closest_cell_index = -1;
     point_t closest_c_pt;
     point_t closest_f_pt;
 
     size_t i;
     for (i = 0; i < cvector_size(*cell_list); ++i)
     {
-        bcd_cell_t *cell = &(*cell_list)[i];
-
-        if (!cell->open)
+        if (!(*cell_list)[i].open)
             continue;
 
-        // Safety checks for empty edge lists
-        if (cvector_size(cell->ceiling_edge_list) == 0 ||
-            cvector_size(cell->floor_edge_list) == 0)
+        if (cvector_size((*cell_list)[i].ceiling_edge_list) == 0 ||
+            cvector_size((*cell_list)[i].floor_edge_list) == 0)
             continue;
 
-        polygon_edge_t ceil_edge = cell->ceiling_edge_list[(cvector_size(cell->ceiling_edge_list)) - 1];
+        polygon_edge_t ceil_edge = (*cell_list)[i].ceiling_edge_list[(cvector_size((*cell_list)[i].ceiling_edge_list)) - 1];
         point_t c_intersection;
         float evt_to_ceil_dist = calc_evt_to_edge_dist(curr_evt.polygon_vertex, ceil_edge, &c_intersection);
 
-        polygon_edge_t floor_edge = cell->floor_edge_list[(cvector_size(cell->floor_edge_list)) - 1];
+        polygon_edge_t floor_edge = (*cell_list)[i].floor_edge_list[(cvector_size((*cell_list)[i].floor_edge_list)) - 1];
         point_t f_intersection;
         float evt_to_floor_dist = calc_evt_to_edge_dist(curr_evt.polygon_vertex, floor_edge, &f_intersection);
 
@@ -288,13 +290,13 @@ static void in_find_prev_cell(const bcd_event_t curr_evt,
             min_evt_to_ceil_dist = evt_to_ceil_dist;
             min_evt_to_floor_dist = evt_to_floor_dist;
 
-            closest_cell = cell;
+            closest_cell_index = i;
             closest_c_pt = c_intersection;
             closest_f_pt = f_intersection;
         }
     }
 
-    *prev_cell = closest_cell;
+    *prev_cell_index = closest_cell_index;
     *c_pt = closest_c_pt;
     *f_pt = closest_f_pt;
 }
@@ -304,19 +306,18 @@ static void in_find_prev_cell(const bcd_event_t curr_evt,
 static int handle_side_out(const bcd_event_t curr_evt,
                            cvector_vector_type(bcd_cell_t) * cell_list)
 {
-    bcd_cell_t *cell = NULL;
-    size_t i;
-    for (i = 0; i < cvector_size(*cell_list); ++i)
+    size_t cell_index;
+    for (cell_index = 0; cell_index < cvector_size(*cell_list); ++cell_index)
     {
-        cell = &(*cell_list)[i];
-
-        // Safety checks for empty edge lists
-        if (cvector_size(cell->ceiling_edge_list) == 0 ||
-            cvector_size(cell->floor_edge_list) == 0)
+        if (!(*cell_list)[cell_index].open)
             continue;
 
-        point_t ceil_edge_end = cvector_back(cell->ceiling_edge_list)->end;
-        point_t floor_edge_begin = cvector_back(cell->floor_edge_list)->begin;
+        if (cvector_size((*cell_list)[cell_index].ceiling_edge_list) == 0 ||
+            cvector_size((*cell_list)[cell_index].floor_edge_list) == 0)
+            continue;
+
+        point_t ceil_edge_end = cvector_back((*cell_list)[cell_index].ceiling_edge_list)->end;
+        point_t floor_edge_begin = cvector_back((*cell_list)[cell_index].floor_edge_list)->begin;
 
         if (are_equal_points(curr_evt.polygon_vertex, ceil_edge_end) &&
             are_equal_points(curr_evt.polygon_vertex, floor_edge_begin))
@@ -325,14 +326,14 @@ static int handle_side_out(const bcd_event_t curr_evt,
         }
     }
 
-    // Check if we found a valid cell
-    if (i >= cvector_size(*cell_list))
+    if (cell_index >= cvector_size(*cell_list))
     {
         printf("Error: No matching cell found in handle_side_out\n");
         return -1;
     }
 
-    update_bcd_cell(cell,
+    update_bcd_cell(cell_list,
+                    (int)cell_index,
                     curr_evt.polygon_vertex,
                     curr_evt.polygon_vertex,
                     SIDE_OUT,
@@ -346,24 +347,24 @@ static int handle_out(const bcd_event_t curr_evt,
                       cvector_vector_type(bcd_cell_t) * cell_list)
 {
     // TOP CELL
-    bcd_cell_t *top_cell = NULL;
+    int top_cell_index = -1;
     point_t c_pt;
 
-    out_find_top_cell(curr_evt, cell_list, &top_cell, &c_pt);
+    out_find_top_cell(curr_evt, cell_list, &top_cell_index, &c_pt);
 
-    if (top_cell == NULL)
+    if (top_cell_index == -1)
     {
         printf("Error: Failed to find top cell in handle_out\n");
         return -1;
     }
 
     // BOTTOM CELL
-    bcd_cell_t *bottom_cell = NULL;
+    int bottom_cell_index = -1;
     point_t f_pt;
 
-    out_find_bottom_cell(curr_evt, cell_list, &bottom_cell, &f_pt);
+    out_find_bottom_cell(curr_evt, cell_list, &bottom_cell_index, &f_pt);
 
-    if (bottom_cell == NULL)
+    if (bottom_cell_index == -1)
     {
         printf("Error: Failed to find bottom cell in handle_out\n");
         return -1;
@@ -372,32 +373,15 @@ static int handle_out(const bcd_event_t curr_evt,
     // NEW CELL
     bcd_cell_t new_cell;
     bcd_neighbor_list_t new_nl = {0};
-    
-    // Find indices of top_cell and bottom_cell
-    int top_cell_index = -1;
-    int bottom_cell_index = -1;
-    
-    for (size_t k = 0; k < cvector_size(*cell_list); ++k) {
-        if (&(*cell_list)[k] == top_cell) {
-            top_cell_index = (int)k;
-        }
-        if (&(*cell_list)[k] == bottom_cell) {
-            bottom_cell_index = (int)k;
-        }
-    }
-    
-    if (top_cell_index != -1) {
-        add_tail_cell_neighbor_list(&new_nl, top_cell_index);
-    }
-    if (bottom_cell_index != -1) {
-        add_tail_cell_neighbor_list(&new_nl, bottom_cell_index);
-    }
 
+    add_tail_cell_neighbor_list(&new_nl, top_cell_index);
+    add_tail_cell_neighbor_list(&new_nl, bottom_cell_index);
+    
     new_cell = fill_bcd_cell(c_pt,
-                             *cvector_back(top_cell->ceiling_edge_list),
+                             *cvector_back((*cell_list)[top_cell_index].ceiling_edge_list),
                              (point_t){0},
                              (point_t){0},
-                             *cvector_back(bottom_cell->floor_edge_list),
+                             *cvector_back((*cell_list)[bottom_cell_index].floor_edge_list),
                              f_pt,
                              new_nl,
                              true,
@@ -407,20 +391,22 @@ static int handle_out(const bcd_event_t curr_evt,
     cvector_push_back(*cell_list, new_cell);
 
     // UPDATING CELLS
-    size_t new_cell_index = cvector_size(*cell_list) - 1;
+    int new_cell_index = (int) cvector_size(*cell_list) - 1;
 
-    update_bcd_cell(top_cell,
+    update_bcd_cell(cell_list,
+                    top_cell_index,
                     c_pt,
                     curr_evt.polygon_vertex,
                     OUT,
-                    (int)new_cell_index,
+                    new_cell_index,
                     -1);
 
-    update_bcd_cell(bottom_cell,
+    update_bcd_cell(cell_list,
+                    bottom_cell_index,
                     curr_evt.polygon_vertex,
                     f_pt,
                     OUT,
-                    (int)new_cell_index,
+                    new_cell_index,
                     -1);
 
     return 0;
@@ -430,7 +416,7 @@ static int handle_out(const bcd_event_t curr_evt,
 
 static void out_find_top_cell(const bcd_event_t curr_evt,
                               cvector_vector_type(bcd_cell_t) * cell_list,
-                              bcd_cell_t **top_cell,
+                              int *top_cell_index,
                               point_t *c_pt)
 {
     if (!cell_list || !*cell_list)
@@ -439,22 +425,18 @@ static void out_find_top_cell(const bcd_event_t curr_evt,
         return;
     }
 
-    bcd_cell_t *cell = NULL;
     point_t floor_edge_begin;
-
     size_t i;
+    
     for (i = 0; i < cvector_size(*cell_list); ++i)
     {
-        cell = &(*cell_list)[i];
-
-        if (!cell->open)
+        if (!(*cell_list)[i].open)
             continue;
 
-        // Safety check for empty edge list
-        if (cvector_size(cell->floor_edge_list) == 0)
+        if (cvector_size((*cell_list)[i].floor_edge_list) == 0)
             continue;
 
-        floor_edge_begin = cvector_back(cell->floor_edge_list)->begin;
+        floor_edge_begin = cvector_back((*cell_list)[i].floor_edge_list)->begin;
 
         if (!are_equal_points(curr_evt.polygon_vertex, floor_edge_begin))
             continue;
@@ -462,30 +444,29 @@ static void out_find_top_cell(const bcd_event_t curr_evt,
         break;
     }
 
-    // Check if we found a valid cell
     if (i >= cvector_size(*cell_list))
     {
         printf("Error: No matching top cell found in out_find_top_cell\n");
-        *top_cell = NULL;
+        *top_cell_index = -1;
         return;
     }
 
-    *top_cell = cell;
+    *top_cell_index = (int)i;
 
-    // Safety check for valid cell and non-empty edge list
-    if (*top_cell == NULL || cvector_size((*top_cell)->ceiling_edge_list) == 0)
+    if (cvector_size((*cell_list)[*top_cell_index].ceiling_edge_list) == 0)
     {
         printf("Error: Invalid top_cell or empty ceiling_edge_list in out_find_top_cell\n");
+        *top_cell_index = -1;
         return;
     }
 
-    polygon_edge_t ceil_edge = (*top_cell)->ceiling_edge_list[(cvector_size((*top_cell)->ceiling_edge_list)) - 1];
-    float evt_to_ceil_dist = calc_evt_to_edge_dist(curr_evt.polygon_vertex, ceil_edge, c_pt);
+    polygon_edge_t ceil_edge = (*cell_list)[*top_cell_index].ceiling_edge_list[(cvector_size((*cell_list)[*top_cell_index].ceiling_edge_list)) - 1];
+    (void)calc_evt_to_edge_dist(curr_evt.polygon_vertex, ceil_edge, c_pt);
 }
 
 static void out_find_bottom_cell(const bcd_event_t curr_evt,
                                  cvector_vector_type(bcd_cell_t) * cell_list,
-                                 bcd_cell_t **bottom_cell,
+                                 int *bottom_cell_index,
                                  point_t *f_pt)
 {
     if (!cell_list || !*cell_list)
@@ -494,22 +475,18 @@ static void out_find_bottom_cell(const bcd_event_t curr_evt,
         return;
     }
 
-    bcd_cell_t *cell = NULL;
     point_t ceil_edge_end;
 
     size_t i;
     for (i = 0; i < cvector_size(*cell_list); ++i)
     {
-        cell = &(*cell_list)[i];
-
-        if (!cell->open)
+        if (!(*cell_list)[i].open)
             continue;
 
-        // Safety check for empty edge list
-        if (cvector_size(cell->ceiling_edge_list) == 0)
+        if (cvector_size((*cell_list)[i].ceiling_edge_list) == 0)
             continue;
 
-        ceil_edge_end = cvector_back(cell->ceiling_edge_list)->end;
+        ceil_edge_end = cvector_back((*cell_list)[i].ceiling_edge_list)->end;
 
         if (!are_equal_points(curr_evt.polygon_vertex, ceil_edge_end))
             continue;
@@ -517,25 +494,24 @@ static void out_find_bottom_cell(const bcd_event_t curr_evt,
         break;
     }
 
-    // Check if we found a valid cell
     if (i >= cvector_size(*cell_list))
     {
         printf("Error: No matching bottom cell found in out_find_bottom_cell\n");
-        *bottom_cell = NULL;
+        *bottom_cell_index = -1;
         return;
     }
 
-    *bottom_cell = cell;
+    *bottom_cell_index = (int)i;
 
-    // Safety check for valid cell and non-empty edge list
-    if (*bottom_cell == NULL || cvector_size((*bottom_cell)->floor_edge_list) == 0)
+    if (cvector_size((*cell_list)[*bottom_cell_index].floor_edge_list) == 0)
     {
         printf("Error: Invalid bottom_cell or empty floor_edge_list in out_find_bottom_cell\n");
+        *bottom_cell_index = -1;
         return;
     }
 
-    polygon_edge_t floor_edge = (*bottom_cell)->floor_edge_list[(cvector_size((*bottom_cell)->floor_edge_list)) - 1];
-    float evt_to_ceil_dist = calc_evt_to_edge_dist(curr_evt.polygon_vertex, floor_edge, f_pt);
+    polygon_edge_t floor_edge = (*cell_list)[*bottom_cell_index].floor_edge_list[(cvector_size((*cell_list)[*bottom_cell_index].floor_edge_list)) - 1];
+    (void)calc_evt_to_edge_dist(curr_evt.polygon_vertex, floor_edge, f_pt);
 }
 
 // ---
@@ -543,18 +519,14 @@ static void out_find_bottom_cell(const bcd_event_t curr_evt,
 static int handle_floor(const bcd_event_t curr_evt,
                         cvector_vector_type(bcd_cell_t) * cell_list)
 {
-    bcd_cell_t *cell = NULL;
-
     size_t i;
     for (i = 0; i < cvector_size(*cell_list); ++i)
     {
-        cell = &(*cell_list)[i];
-
-        if (!cell->open)
+        if (!(*cell_list)[i].open)
             continue;
 
         point_t f_edge_begin;
-        f_edge_begin = cvector_back(cell->floor_edge_list)->begin;
+        f_edge_begin = cvector_back((*cell_list)[i].floor_edge_list)->begin;
 
         if (are_equal_points(curr_evt.polygon_vertex, f_edge_begin))
         {
@@ -562,7 +534,7 @@ static int handle_floor(const bcd_event_t curr_evt,
         }
     }
 
-    cvector_push_back(cell->floor_edge_list, curr_evt.floor_edge);
+    cvector_push_back((*cell_list)[i].floor_edge_list, curr_evt.floor_edge);
 
     return 0;
 }
@@ -570,24 +542,20 @@ static int handle_floor(const bcd_event_t curr_evt,
 static int handle_ceiling(const bcd_event_t curr_evt,
                           cvector_vector_type(bcd_cell_t) * cell_list)
 {
-    bcd_cell_t *cell = NULL;
-
     size_t i;
     for (i = 0; i < cvector_size(*cell_list); ++i)
     {
-        cell = &(*cell_list)[i];
-
-        if (!cell->open)
+        if (!(*cell_list)[i].open)
             continue;
 
         point_t c_edge_end;
-        c_edge_end = cvector_back(cell->ceiling_edge_list)->end;
+        c_edge_end = cvector_back((*cell_list)[i].ceiling_edge_list)->end;
 
         if (are_equal_points(curr_evt.polygon_vertex, c_edge_end))
             break;
     }
 
-    cvector_push_back(cell->ceiling_edge_list, curr_evt.ceiling_edge);
+    cvector_push_back((*cell_list)[i].ceiling_edge_list, curr_evt.ceiling_edge);
 
     return 0;
 }
@@ -632,35 +600,38 @@ static bcd_cell_t fill_bcd_cell(point_t c_begin,
     return cell;
 }
 
-static void update_bcd_cell(bcd_cell_t *cell,
+static void update_bcd_cell(cvector_vector_type(bcd_cell_t) * cell_list,
+                            int target_cell_index,
                             point_t c_pt,
                             point_t f_pt,
                             bcd_event_type_t evt_type,
                             int top_cell_index,
                             int bottom_cell_index)
 {
-    cell->c_end = c_pt;
-    cell->f_begin = f_pt;
-
-    bcd_neighbor_list_t *neighbor_list = &cell->neighbor_list;
+    (*cell_list)[target_cell_index].c_end = c_pt;
+    (*cell_list)[target_cell_index].f_begin = f_pt;
 
     if (evt_type == IN)
     {
         if (top_cell_index >= 0)
-            add_head_cell_neighbor_list(neighbor_list, top_cell_index);
+            add_head_cell_neighbor_list(&(*cell_list)[target_cell_index].neighbor_list,
+                                        top_cell_index);
         if (bottom_cell_index >= 0)
-            add_head_cell_neighbor_list(neighbor_list, bottom_cell_index);
+            add_head_cell_neighbor_list(&(*cell_list)[target_cell_index].neighbor_list,
+                                        bottom_cell_index);
     }
 
     if (evt_type == OUT)
     {
         if (top_cell_index >= 0)
-            add_tail_cell_neighbor_list(neighbor_list, top_cell_index);
+            add_tail_cell_neighbor_list(&(*cell_list)[target_cell_index].neighbor_list,
+                                        top_cell_index);
         if (bottom_cell_index >= 0)
-            add_tail_cell_neighbor_list(neighbor_list, bottom_cell_index);
+            add_tail_cell_neighbor_list(&(*cell_list)[target_cell_index].neighbor_list,
+                                        bottom_cell_index);
     }
 
-    cell->open = false;
+    (*cell_list)[target_cell_index].open = false;
 }
 
 static float calc_evt_to_edge_dist(point_t evt_vertex, polygon_edge_t cell_edge, point_t *intersection)
@@ -780,6 +751,7 @@ static void free_neighbor_list(bcd_neighbor_list_t *neighbor_list)
 // CELL LIST HELPERS
 
 // log_bcd_cell_list((const cvector_vector_type(bcd_cell_t) *) &cell_list);
+// Warning: Vector realloc unsafe.
 void log_bcd_cell_list(const cvector_vector_type(bcd_cell_t) * cell_list)
 {
     if (!cell_list || !*cell_list)
@@ -847,12 +819,12 @@ void log_bcd_cell_list(const cvector_vector_type(bcd_cell_t) * cell_list)
             while (current)
             {
                 int cell_index = current->cell_index;
-                
+
                 if (cell_index >= 0 && cell_index < (int)cvector_size(*cell_list))
                 {
                     const bcd_cell_t *neighbor_cell = &(*cell_list)[cell_index];
-                    printf("      [%d]: cell_index=%d cell_pos=(%.2f,%.2f)", 
-                           node_index, cell_index, 
+                    printf("      [%d]: cell_index=%d cell_pos=(%.2f,%.2f)",
+                           node_index, cell_index,
                            neighbor_cell->c_begin.x, neighbor_cell->c_begin.y);
                 }
                 else
