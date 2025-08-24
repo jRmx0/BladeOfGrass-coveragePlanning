@@ -36,6 +36,7 @@ class UIController {
         const toggleEventsSwitch = document.getElementById('toggleEvents');
         const toggleCellsSwitch = document.getElementById('toggleCells');
         const toggleCoveragePathSwitch = document.getElementById('toggleCoveragePath');
+        const toggleMotionPlanSwitch = document.getElementById('toggleMotionPlan');
         if (toggleVertexSwitch) {
             toggleVertexSwitch.addEventListener('change', (e) => {
                 // If enabling vertex numbers, disable events and cells
@@ -89,6 +90,12 @@ class UIController {
         if (toggleCoveragePathSwitch) {
             toggleCoveragePathSwitch.addEventListener('change', (e) => {
                 this.canvasManager.showCoveragePath = !!e.target.checked;
+                this.canvasManager.draw();
+            });
+        }
+        if (toggleMotionPlanSwitch) {
+            toggleMotionPlanSwitch.addEventListener('change', (e) => {
+                this.canvasManager.showMotionPlan = !!e.target.checked;
                 this.canvasManager.draw();
             });
         }
@@ -309,6 +316,13 @@ class UIController {
                 const ps = document.getElementById('toggleCoveragePath');
                 if (ps) ps.disabled = false;
             }
+            // Store motion plan if present
+            if (resp && resp.motion_plan) {
+                this.canvasManager.setMotionPlan(resp.motion_plan);
+                // Enable motion plan toggle
+                const ms = document.getElementById('toggleMotionPlan');
+                if (ms) ms.disabled = false;
+            }
             const msg = ok ? 'BCD run complete.' : 'BCD run failed.';
             this.canvasManager.showNotification(msg);
         });
@@ -521,6 +535,7 @@ class UIController {
         this.clearEventsOverlay();
         this.clearCellsOverlay();
         this.clearCoveragePathOverlay();
+        this.clearMotionPlanOverlay();
         
         // Reset UI using state manager
         this.uiStateManager.resetAllButtons();
@@ -880,6 +895,16 @@ class UIController {
         if (pathToggle) {
             pathToggle.checked = false;
             pathToggle.disabled = true; // disabled until next export provides path
+        }
+    }
+
+    clearMotionPlanOverlay() {
+        this.canvasManager.setMotionPlan(null);
+        this.canvasManager.showMotionPlan = false;
+        const motionToggle = document.getElementById('toggleMotionPlan');
+        if (motionToggle) {
+            motionToggle.checked = false;
+            motionToggle.disabled = true; // disabled until next motion plan is generated
         }
     }
 

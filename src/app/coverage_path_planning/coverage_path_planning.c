@@ -22,8 +22,8 @@ static const char *polygon_type_to_string(polygon_type_t t);
 static char *serialize_event_list_json(const bcd_event_list_t *event_list);
 static char *serialize_result_json(const bcd_event_list_t *event_list,
 								   cvector_vector_type(bcd_cell_t) * cell_list,
-								   cvector_vector_type(int) * path_list);
-
+								   cvector_vector_type(int) * path_list,
+								   const bcd_motion_plan_t *motion_plan);
 static char *err_cleanup(input_environment_t *env,
 						 bcd_event_list_t *event_list,
 						 cvector_vector_type(bcd_cell_t) * cell_list,
@@ -86,7 +86,7 @@ char *coverage_path_planning_process(const char *input_environment_json)
 	}
 	log_bcd_motion(motion_plan);
 
-	char *json_out = serialize_result_json(&event_list, &cell_list, &path_list);
+	char *json_out = serialize_result_json(&event_list, &cell_list, &path_list, &motion_plan);
 
 	err_cleanup(&env, &event_list, &cell_list, &path_list, &motion_plan, rc);
 
@@ -273,7 +273,8 @@ static char *serialize_event_list_json(const bcd_event_list_t *event_list)
 
 static char *serialize_result_json(const bcd_event_list_t *event_list,
 								   cvector_vector_type(bcd_cell_t) * cell_list,
-								   cvector_vector_type(int) * path_list)
+								   cvector_vector_type(int) * path_list,
+								   const bcd_motion_plan_t *motion_plan)
 {
 	cJSON *root = cJSON_CreateObject();
 	cJSON_AddStringToObject(root, "status", "ok");
@@ -426,9 +427,85 @@ static char *serialize_result_json(const bcd_event_list_t *event_list,
 		}
 	}
 
+	// Add motion plan
+	cJSON *motion_plan_obj = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "motion_plan", motion_plan_obj);
+
+	cJSON *sections_arr = cJSON_CreateArray();
+	cJSON_AddItemToObject(motion_plan_obj, "sections", sections_arr);
+
+	if (motion_plan && motion_plan->section)
+	{
+		int section_count = cvector_size(motion_plan->section);
+		for (int i = 0; i < section_count; ++i)
+		{
+			const cell_motion_plan_t *section = &motion_plan->section[i];
+			cJSON *jsection = cJSON_CreateObject();
+			cJSON_AddNumberToObject(jsection, "section_id", i);
+
+			// Add coverage points (ox)
+			cJSON *coverage_arr = cJSON_CreateArray();
+			cJSON_AddItemToObject(jsection, "coverage", coverage_arr);
+
+			if (section->ox)
+			{
+				int point_count = cvector_size(section->ox);
+				for (int j = 0; j < point_count; ++j)
+				{
+					const point_t *point = &section->ox[j];
+					cJSON *jpoint = cJSON_CreateObject();
+					cJSON_AddNumberToObject(jpoint, "x", point->x);
+					cJSON_AddNumberToObject(jpoint, "y", point->y);
+					cJSON_AddItemToArray(coverage_arr, jpoint);
+				}
+			}
+
+			// Add navigation points (nav)
+			cJSON *nav_arr = cJSON_CreateArray();
+			cJSON_AddItemToObject(jsection, "navigation", nav_arr);
+
+			if (section->nav)
+			{
+				int nav_count = cvector_size(section->nav);
+				for (int j = 0; j < nav_count; ++j)
+				{
+					const point_t *point = &section->nav[j];
+					cJSON *jpoint = cJSON_CreateObject();
+					cJSON_AddNumberToObject(jpoint, "x", point->x);
+					cJSON_AddNumberToObject(jpoint, "y", point->y);
+					cJSON_AddItemToArray(nav_arr, jpoint);
+				}
+			}
+
+			cJSON_AddItemToArray(sections_arr, jsection);
+		}
+	}
+
 	char *json = cJSON_PrintUnformatted(root);
 	cJSON_Delete(root);
 	return json; // caller must free
+}
+
+static char *err_cleanup(input_environment_t *env,
+						 bcd_event_list_t *event_list,
+						 cvector_vector_type(bcd_cell_t) * cell_list,
+						 cvector_vector_type(int) * path_list,
+						 bcd_motion_plan_t *motion_plan,
+						 int rc)
+{
+	free_input_environment(env);
+	free_bcd_event_list(event_list);
+	free_bcd_cell_list(cell_list);
+	cvector_free(*path_list);
+	free_bcd_motion(motion_plan);
+
+	cJSON *err = cJSON_CreateObject();
+	cJSON_AddStringToObject(err, "status", "error");
+	cJSON_AddNumberToObject(err, "code", rc);
+	cJSON_AddStringToObject(err, "message", "event list generation failed");
+	char *out = cJSON_PrintUnformatted(err);
+	cJSON_Delete(err);
+	return out;
 }
 
 static int parse_polygon_vertices_from_array(const cJSON *arr,
@@ -569,28 +646,6 @@ static void log_event_list(const bcd_event_list_t *event_list)
 				   type_str, event_list->bcd_events[i].polygon_type == BOUNDARY ? "BOUNDARY" : "OBSTACLE");
 		}
 	}
-}
-
-static char *err_cleanup(input_environment_t *env,
-						 bcd_event_list_t *event_list,
-						 cvector_vector_type(bcd_cell_t) * cell_list,
-						 cvector_vector_type(int) * path_list,
-						 bcd_motion_plan_t *motion_plan,
-						 int rc)
-{
-	free_input_environment(env);
-	free_bcd_event_list(event_list);
-	free_bcd_cell_list(cell_list);
-	cvector_free(*path_list);
-	free_bcd_motion(motion_plan);
-
-	cJSON *err = cJSON_CreateObject();
-	cJSON_AddStringToObject(err, "status", "error");
-	cJSON_AddNumberToObject(err, "code", rc);
-	cJSON_AddStringToObject(err, "message", "event list generation failed");
-	char *out = cJSON_PrintUnformatted(err);
-	cJSON_Delete(err);
-	return out;
 }
 
 // POINT_T helpers

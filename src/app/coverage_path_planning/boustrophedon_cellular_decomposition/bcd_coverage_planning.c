@@ -377,8 +377,8 @@ static cvector_vector_type(point_t) compute_boustrophedon_motion(const cvector_v
     // Get cell boundaries
     point_t ceiling_start = cell->c_begin;
     point_t ceiling_end = cell->c_end;
-    point_t floor_start = cell->f_begin;
-    point_t floor_end = cell->f_end;
+    point_t floor_start = cell->f_end;
+    point_t floor_end = cell->f_begin;
     
     // Calculate the sweep direction (perpendicular to the cell)
     // Assuming cells are oriented vertically, sweep horizontally
@@ -393,7 +393,7 @@ static cvector_vector_type(point_t) compute_boustrophedon_motion(const cvector_v
     // Calculate number of sweep lines
     int num_lines = (int)(cell_width / step_size) + 1;
     
-    // Generate boustrophedon pattern
+    // Generate boustrophedon pattern as a continuous path
     bool going_down = true; // Start by going from ceiling to floor
     
     for (int i = 0; i < num_lines; i++)
@@ -433,9 +433,48 @@ static cvector_vector_type(point_t) compute_boustrophedon_motion(const cvector_v
             end_point.y = ceiling_y;
         }
         
-        // Add the line segment points
-        cvector_push_back(ox, start_point);
+        // For the first line, add the start point
+        if (i == 0)
+        {
+            cvector_push_back(ox, start_point);
+        }
+        
+        // Always add the end point (this creates the continuous path)
         cvector_push_back(ox, end_point);
+        
+        // For lines except the last one, add the connecting point to next line
+        if (i < num_lines - 1)
+        {
+            // Calculate the start point of the next line
+            float next_x_offset = (i + 1) * step_size;
+            float next_x = ceiling_start.x + next_x_offset;
+            
+            // Don't exceed the cell boundary
+            if (next_x > ceiling_end.x)
+            {
+                next_x = ceiling_end.x;
+            }
+            
+            // Calculate y-coordinates for next vertical line
+            float next_t = (next_x - ceiling_start.x) / (ceiling_end.x - ceiling_start.x);
+            float next_ceiling_y = ceiling_start.y + next_t * (ceiling_end.y - ceiling_start.y);
+            float next_floor_y = floor_start.y + next_t * (floor_end.y - floor_start.y);
+            
+            point_t next_start;
+            if (!going_down) // Next line will go down
+            {
+                next_start.x = next_x;
+                next_start.y = next_ceiling_y;
+            }
+            else // Next line will go up
+            {
+                next_start.x = next_x;
+                next_start.y = next_floor_y;
+            }
+            
+            // Add the connecting point (same as next line's start)
+            cvector_push_back(ox, next_start);
+        }
         
         // Alternate direction for next line
         going_down = !going_down;
@@ -478,7 +517,7 @@ void log_bcd_motion(const bcd_motion_plan_t motion_plan)
         else
         {
             int point_count = cvector_size(section->ox);
-            printf("    Coverage points: %d\n", point_count);
+            printf("    Coverage points: %d (continuous path)\n", point_count);
             
             if (point_count == 0)
             {
@@ -486,23 +525,24 @@ void log_bcd_motion(const bcd_motion_plan_t motion_plan)
             }
             else
             {
-                // Log points in pairs (start and end of each sweep line)
-                for (int j = 0; j < point_count; j += 2)
+                // Log the continuous path points
+                printf("    Path: ");
+                for (int j = 0; j < point_count; j++)
                 {
-                    if (j + 1 < point_count)
+                    point_t point = section->ox[j];
+                    printf("(%.2f, %.2f)", point.x, point.y);
+                    if (j < point_count - 1)
                     {
-                        point_t start = section->ox[j];
-                        point_t end = section->ox[j + 1];
-                        printf("      Sweep %d: (%.2f, %.2f) -> (%.2f, %.2f)\n", 
-                               j / 2, start.x, start.y, end.x, end.y);
+                        printf(" -> ");
                     }
-                    else
+                    
+                    // Break line every 4 points for readability
+                    if ((j + 1) % 4 == 0 && j < point_count - 1)
                     {
-                        // Single point (shouldn't happen in normal boustrophedon motion)
-                        point_t point = section->ox[j];
-                        printf("      Point %d: (%.2f, %.2f)\n", j, point.x, point.y);
+                        printf("\n          ");
                     }
                 }
+                printf("\n");
             }
         }
         
