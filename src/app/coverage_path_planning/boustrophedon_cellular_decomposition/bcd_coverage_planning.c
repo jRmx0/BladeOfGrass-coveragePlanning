@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <math.h>
 #include "../../../../dependencies/cvector/cvector.h"
 #include "bcd_coverage_planning.h"
 
@@ -327,7 +328,7 @@ void log_bcd_path_list(const cvector_vector_type(int) * path_list)
 int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
                        const cvector_vector_type(int) * path_list,
                        bcd_motion_plan_t *motion_plan,
-                       int step_size)
+                       float step_size)
 {
     size_t i;
     for (i = 0; i < cvector_size(*path_list); ++i)
@@ -348,11 +349,14 @@ int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
 
         cell_motion_plan_t curr_section;
         curr_section.ox = ox;
+        curr_section.nav = NULL; // Navigation not implemented yet
 
         cvector_push_back(motion_plan->section, curr_section);
 
         (*cell_list)[(*path_list)[i]].cleaned = true;
     }
+    
+    return 0;
 }
 
 // --- COMPUTE_BCD_MOTION
@@ -363,7 +367,79 @@ static cvector_vector_type(point_t) compute_boustrophedon_motion(const cvector_v
 {
     cvector_vector_type(point_t) ox = NULL;
 
-    // Calculate back and forth motion
+    if (cell_list == NULL || cell_index < 0 || cell_index >= cvector_size(*cell_list))
+    {
+        return ox;
+    }
+
+    const bcd_cell_t *cell = &(*cell_list)[cell_index];
+    
+    // Get cell boundaries
+    point_t ceiling_start = cell->c_begin;
+    point_t ceiling_end = cell->c_end;
+    point_t floor_start = cell->f_begin;
+    point_t floor_end = cell->f_end;
+    
+    // Calculate the sweep direction (perpendicular to the cell)
+    // Assuming cells are oriented vertically, sweep horizontally
+    float cell_width = ceiling_end.x - ceiling_start.x;
+    float cell_height = fabs(ceiling_start.y - floor_start.y);
+    
+    if (cell_width <= 0 || step_size <= 0)
+    {
+        return ox;
+    }
+    
+    // Calculate number of sweep lines
+    int num_lines = (int)(cell_width / step_size) + 1;
+    
+    // Generate boustrophedon pattern
+    bool going_down = true; // Start by going from ceiling to floor
+    
+    for (int i = 0; i < num_lines; i++)
+    {
+        float x_offset = i * step_size;
+        float current_x = ceiling_start.x + x_offset;
+        
+        // Don't exceed the cell boundary
+        if (current_x > ceiling_end.x)
+        {
+            current_x = ceiling_end.x;
+        }
+        
+        // Calculate y-coordinates for this vertical line
+        // Interpolate between ceiling and floor based on x position
+        float t = (current_x - ceiling_start.x) / (ceiling_end.x - ceiling_start.x);
+        
+        float ceiling_y = ceiling_start.y + t * (ceiling_end.y - ceiling_start.y);
+        float floor_y = floor_start.y + t * (floor_end.y - floor_start.y);
+        
+        point_t start_point, end_point;
+        
+        if (going_down)
+        {
+            // Go from ceiling to floor
+            start_point.x = current_x;
+            start_point.y = ceiling_y;
+            end_point.x = current_x;
+            end_point.y = floor_y;
+        }
+        else
+        {
+            // Go from floor to ceiling
+            start_point.x = current_x;
+            start_point.y = floor_y;
+            end_point.x = current_x;
+            end_point.y = ceiling_y;
+        }
+        
+        // Add the line segment points
+        cvector_push_back(ox, start_point);
+        cvector_push_back(ox, end_point);
+        
+        // Alternate direction for next line
+        going_down = !going_down;
+    }
 
     return ox;
 }
@@ -372,4 +448,105 @@ static cvector_vector_type(point_t) compute_boustrophedon_motion(const cvector_v
 
 void log_bcd_motion(const bcd_motion_plan_t motion_plan)
 {
+    printf("BCD Motion Plan:\n");
+    
+    if (motion_plan.section == NULL)
+    {
+        printf("  (NULL motion plan)\n");
+        return;
+    }
+    
+    int section_count = cvector_size(motion_plan.section);
+    printf("  Total sections: %d\n", section_count);
+    
+    if (section_count == 0)
+    {
+        printf("  (no sections)\n");
+        return;
+    }
+    
+    for (int i = 0; i < section_count; i++)
+    {
+        const cell_motion_plan_t *section = &motion_plan.section[i];
+        printf("  Section %d:\n", i);
+        
+        // Log coverage motion (ox)
+        if (section->ox == NULL)
+        {
+            printf("    Coverage: (NULL point list)\n");
+        }
+        else
+        {
+            int point_count = cvector_size(section->ox);
+            printf("    Coverage points: %d\n", point_count);
+            
+            if (point_count == 0)
+            {
+                printf("    Coverage: (no points)\n");
+            }
+            else
+            {
+                // Log points in pairs (start and end of each sweep line)
+                for (int j = 0; j < point_count; j += 2)
+                {
+                    if (j + 1 < point_count)
+                    {
+                        point_t start = section->ox[j];
+                        point_t end = section->ox[j + 1];
+                        printf("      Sweep %d: (%.2f, %.2f) -> (%.2f, %.2f)\n", 
+                               j / 2, start.x, start.y, end.x, end.y);
+                    }
+                    else
+                    {
+                        // Single point (shouldn't happen in normal boustrophedon motion)
+                        point_t point = section->ox[j];
+                        printf("      Point %d: (%.2f, %.2f)\n", j, point.x, point.y);
+                    }
+                }
+            }
+        }
+        
+        // Log navigation motion (nav)
+        if (section->nav == NULL)
+        {
+            printf("    Navigation: (NULL point list)\n");
+        }
+        else
+        {
+            int nav_count = cvector_size(section->nav);
+            printf("    Navigation points: %d\n", nav_count);
+            
+            if (nav_count == 0)
+            {
+                printf("    Navigation: (no points)\n");
+            }
+            else
+            {
+                for (int j = 0; j < nav_count; j++)
+                {
+                    point_t nav_point = section->nav[j];
+                    printf("      Nav %d: (%.2f, %.2f)\n", j, nav_point.x, nav_point.y);
+                }
+            }
+        }
+    }
+}
+
+void free_bcd_motion(bcd_motion_plan_t *motion_plan)
+{
+    if (motion_plan == NULL)
+        return;
+
+    if (motion_plan->section != NULL)
+    {
+        // Free each section's point vectors
+        for (int i = 0; i < cvector_size(motion_plan->section); i++)
+        {
+            cvector_free(motion_plan->section[i].ox);
+            cvector_free(motion_plan->section[i].nav);
+        }
+        
+        cvector_free(motion_plan->section);
+        motion_plan->section = NULL;
+    }
 }

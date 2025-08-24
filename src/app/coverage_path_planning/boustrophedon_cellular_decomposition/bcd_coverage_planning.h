@@ -7,6 +7,7 @@
 typedef struct
 {
     cvector_vector_type(point_t) ox;
+    cvector_vector_type(point_t) nav; // navigation to next cell
 } cell_motion_plan_t;
 
 
@@ -24,8 +25,10 @@ void log_bcd_path_list(const cvector_vector_type(int) * path_list);
 int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
                        const cvector_vector_type(int) * path_list,
                        bcd_motion_plan_t *motion_plan,
-                       int step_size);
+                       float step_size);
 
 void log_bcd_motion(const bcd_motion_plan_t motion_plan);
+
+void free_bcd_motion(bcd_motion_plan_t *motion_plan);
 
 #endif // BCD_COVERAGE_H
