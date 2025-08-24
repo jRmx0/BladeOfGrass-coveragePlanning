@@ -21,7 +21,8 @@ static const char *event_type_to_string(bcd_event_type_t t);
 static const char *polygon_type_to_string(polygon_type_t t);
 static char *serialize_event_list_json(const bcd_event_list_t *event_list);
 static char *serialize_result_json(const bcd_event_list_t *event_list,
-								   cvector_vector_type(bcd_cell_t) * cell_list);
+								   cvector_vector_type(bcd_cell_t) * cell_list,
+								   cvector_vector_type(int) * path_list);
 
 static char *err_cleanup(input_environment_t *env,
 						 bcd_event_list_t *event_list,
@@ -72,7 +73,7 @@ char *coverage_path_planning_process(const char *input_environment_json)
 	printf("coverage_path_planning: successfully generated path with %d visits\n", cvector_size(path_list));
 	log_bcd_path_list((const cvector_vector_type(int) *)&path_list);
 
-	char *json_out = serialize_result_json(&event_list, &cell_list);
+	char *json_out = serialize_result_json(&event_list, &cell_list, &path_list);
 
 	err_cleanup(&env, &event_list, &cell_list, &path_list, rc);
 
@@ -258,7 +259,8 @@ static char *serialize_event_list_json(const bcd_event_list_t *event_list)
 }
 
 static char *serialize_result_json(const bcd_event_list_t *event_list,
-								   cvector_vector_type(bcd_cell_t) * cell_list)
+								   cvector_vector_type(bcd_cell_t) * cell_list,
+								   cvector_vector_type(int) * path_list)
 {
 	cJSON *root = cJSON_CreateObject();
 	cJSON_AddStringToObject(root, "status", "ok");
@@ -395,6 +397,19 @@ static char *serialize_result_json(const bcd_event_list_t *event_list,
 			cJSON_AddBoolToObject(jcell, "cleaned", cell->cleaned);
 
 			cJSON_AddItemToArray(cell_arr, jcell);
+		}
+	}
+
+	// Add path list
+	cJSON *path_arr = cJSON_CreateArray();
+	cJSON_AddItemToObject(root, "path_list", path_arr);
+
+	if (path_list && *path_list)
+	{
+		int path_count = cvector_size(*path_list);
+		for (int i = 0; i < path_count; ++i)
+		{
+			cJSON_AddItemToArray(path_arr, cJSON_CreateNumber((*path_list)[i]));
 		}
 	}
 

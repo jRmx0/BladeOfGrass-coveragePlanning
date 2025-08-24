@@ -22,6 +22,8 @@ class CanvasManager {
     this.cells = []; // last received cells from backend
     this.showCells = false; // debug toggle for cells
     this.cells = []; // last received cells from backend
+    this.showCoveragePath = false; // toggle for coverage path visualization
+    this.pathList = []; // last received path list from backend
         
         // Notification system
         this.notification = null;
@@ -66,6 +68,9 @@ class CanvasManager {
     // Draw events overlay (if enabled)
     if (this.showEvents && this.events && this.events.length > 0) this.drawEvents();
 
+    // Draw coverage path overlay (if enabled)
+    if (this.showCoveragePath && this.pathList && this.pathList.length > 0 && this.cells && this.cells.length > 0) this.drawCoveragePath();
+
     // Draw notification if present
         if (this.notification) this.drawNotification();
         
@@ -86,6 +91,15 @@ class CanvasManager {
             this.cells = cellsArray;
         } else {
             this.cells = [];
+        }
+        this.draw();
+    }
+
+    setPathList(pathListArray) {
+        if (Array.isArray(pathListArray)) {
+            this.pathList = pathListArray;
+        } else {
+            this.pathList = [];
         }
         this.draw();
     }
@@ -366,6 +380,168 @@ class CanvasManager {
         const dpx = px - closestX;
         const dpy = py - closestY;
         return Math.sqrt(dpx * dpx + dpy * dpy);
+    }
+
+    drawCoveragePath() {
+        if (!this.pathList || this.pathList.length === 0 || !this.cells || this.cells.length === 0) {
+            return;
+        }
+
+        this.ctx.save();
+        
+        // Set path drawing style
+        this.ctx.strokeStyle = '#2ecc71'; // Green path
+        this.ctx.lineWidth = Math.max(3, 4 / this.scale);
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+        
+        // Draw path connections between cell centers
+        if (this.pathList.length > 1) {
+            this.ctx.beginPath();
+            
+            for (let i = 0; i < this.pathList.length; i++) {
+                const cellIndex = this.pathList[i];
+                
+                if (cellIndex >= 0 && cellIndex < this.cells.length) {
+                    const cell = this.cells[cellIndex];
+                    const center = this.findCellVisualCenter(cell);
+                    
+                    if (i === 0) {
+                        this.ctx.moveTo(center.x, center.y);
+                    } else {
+                        this.ctx.lineTo(center.x, center.y);
+                    }
+                }
+            }
+            
+            this.ctx.stroke();
+        }
+        
+        // Draw sequence numbers for ALL visits (including repeated cells)
+        for (let pathIndex = 0; pathIndex < this.pathList.length; pathIndex++) {
+            const cellIndex = this.pathList[pathIndex];
+            
+            if (cellIndex >= 0 && cellIndex < this.cells.length) {
+                const cell = this.cells[cellIndex];
+                const center = this.findCellVisualCenter(cell);
+                
+                // Calculate offset for multiple visits to the same cell
+                const visitsToThisCell = this.pathList.slice(0, pathIndex + 1)
+                    .map((ci, pi) => ci === cellIndex ? pi : -1)
+                    .filter(pi => pi !== -1);
+                const visitNumber = visitsToThisCell.length;
+                
+                // Offset position for multiple visits (smaller radius)
+                const offsetRadius = Math.max(15, 20 / this.scale);
+                const angle = (visitNumber - 1) * (Math.PI / 3); // 60-degree increments
+                const offsetX = Math.cos(angle) * offsetRadius * (visitNumber > 1 ? 0.6 : 0);
+                const offsetY = Math.sin(angle) * offsetRadius * (visitNumber > 1 ? 0.6 : 0);
+                
+                const drawX = center.x + offsetX;
+                const drawY = center.y + offsetY;
+                
+                // Draw small sequence number similar to vertex numbers
+                this.ctx.save();
+                
+                // Small background circle
+                const radius = Math.max(6, 8 / this.scale);
+                this.ctx.fillStyle = visitNumber > 1 ? '#ffa425ff' : '#2e50ccff'; // orange for revisits, blue for first visit
+                this.ctx.beginPath();
+                this.ctx.arc(drawX, drawY, radius, 0, 2 * Math.PI);
+                this.ctx.fill();
+                
+                // White outline
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = Math.max(1, 1.5 / this.scale);
+                this.ctx.stroke();
+                
+                // Small sequence number text
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = `bold ${Math.max(8, Math.round(10 / this.scale))}px Arial, sans-serif`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText((pathIndex + 1).toString(), drawX, drawY);
+                
+                this.ctx.restore();
+                
+                // Draw direction arrow to next cell
+                if (pathIndex < this.pathList.length - 1) {
+                    const nextCellIndex = this.pathList[pathIndex + 1];
+                    if (nextCellIndex >= 0 && nextCellIndex < this.cells.length) {
+                        const nextCell = this.cells[nextCellIndex];
+                        const nextCenter = this.findCellVisualCenter(nextCell);
+                        
+                        // Calculate next position with offset
+                        const nextVisitsToThisCell = this.pathList.slice(0, pathIndex + 2)
+                            .map((ci, pi) => ci === nextCellIndex ? pi : -1)
+                            .filter(pi => pi !== -1);
+                        const nextVisitNumber = nextVisitsToThisCell.length;
+                        const nextAngle = (nextVisitNumber - 1) * (Math.PI / 3);
+                        const nextOffsetX = Math.cos(nextAngle) * offsetRadius * (nextVisitNumber > 1 ? 0.7 : 0);
+                        const nextOffsetY = Math.sin(nextAngle) * offsetRadius * (nextVisitNumber > 1 ? 0.7 : 0);
+                        
+                        const nextDrawX = nextCenter.x + nextOffsetX;
+                        const nextDrawY = nextCenter.y + nextOffsetY;
+                        
+                        this.drawArrow(drawX, drawY, nextDrawX, nextDrawY);
+                    }
+                }
+                
+                // Draw start marker for first cell (larger green ring)
+                if (pathIndex === 0) {
+                    this.ctx.save();
+                    this.ctx.strokeStyle = '#008618ff';
+                    this.ctx.lineWidth = Math.max(2, 2.5 / this.scale);
+                    this.ctx.beginPath();
+                    this.ctx.arc(drawX, drawY, Math.max(8, 10 / this.scale), 0, 2 * Math.PI);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+                
+                // Draw end marker for last cell (smaller purple ring)
+                if (pathIndex === this.pathList.length - 1) {
+                    this.ctx.save();
+                    this.ctx.strokeStyle = '#c11010ff';
+                    this.ctx.lineWidth = Math.max(2, 2.5 / this.scale);
+                    this.ctx.beginPath();
+                    this.ctx.arc(drawX, drawY, Math.max(8, 10 / this.scale), 0, 2 * Math.PI);
+                    this.ctx.stroke();
+                    this.ctx.restore();
+                }
+            }
+        }
+        
+        this.ctx.restore();
+    }
+
+    drawArrow(x1, y1, x2, y2) {
+        const headLength = Math.max(8, 12 / this.scale);
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        
+        // Shorten the arrow to not overlap with cell centers
+        const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        const shortenBy = Math.max(15, 20 / this.scale);
+        const factor = Math.max(0, (distance - shortenBy) / distance);
+        
+        const endX = x1 + (x2 - x1) * factor;
+        const endY = y1 + (y2 - y1) * factor;
+        
+        this.ctx.save();
+        this.ctx.strokeStyle = '#27ae60';
+        this.ctx.fillStyle = '#27ae60';
+        this.ctx.lineWidth = Math.max(2, 3 / this.scale);
+        
+        // Draw arrow head
+        this.ctx.beginPath();
+        this.ctx.moveTo(endX, endY);
+        this.ctx.lineTo(endX - headLength * Math.cos(angle - Math.PI / 6), 
+                       endY - headLength * Math.sin(angle - Math.PI / 6));
+        this.ctx.lineTo(endX - headLength * Math.cos(angle + Math.PI / 6), 
+                       endY - headLength * Math.sin(angle + Math.PI / 6));
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        this.ctx.restore();
     }
 
     drawObstacles() {

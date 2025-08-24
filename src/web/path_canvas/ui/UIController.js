@@ -35,6 +35,7 @@ class UIController {
         const toggleVertexSwitch = document.getElementById('toggleVertexNumbers');
         const toggleEventsSwitch = document.getElementById('toggleEvents');
         const toggleCellsSwitch = document.getElementById('toggleCells');
+        const toggleCoveragePathSwitch = document.getElementById('toggleCoveragePath');
         if (toggleVertexSwitch) {
             toggleVertexSwitch.addEventListener('change', (e) => {
                 // If enabling vertex numbers, disable events and cells
@@ -82,6 +83,12 @@ class UIController {
                     }
                 }
                 this.canvasManager.showCells = !!e.target.checked;
+                this.canvasManager.draw();
+            });
+        }
+        if (toggleCoveragePathSwitch) {
+            toggleCoveragePathSwitch.addEventListener('change', (e) => {
+                this.canvasManager.showCoveragePath = !!e.target.checked;
                 this.canvasManager.draw();
             });
         }
@@ -257,6 +264,7 @@ class UIController {
         // Clear event markers and reset toggle state
         this.clearEventsOverlay();
         this.clearCellsOverlay();
+        this.clearCoveragePathOverlay();
         
         // Update UI
         this.uiStateManager.resetAllButtons();
@@ -293,6 +301,13 @@ class UIController {
                 // Enable cells toggle
                 const cs = document.getElementById('toggleCells');
                 if (cs) cs.disabled = false;
+            }
+            // Store path list if present
+            if (resp && Array.isArray(resp.path_list)) {
+                this.canvasManager.setPathList(resp.path_list);
+                // Enable coverage path toggle
+                const ps = document.getElementById('toggleCoveragePath');
+                if (ps) ps.disabled = false;
             }
             const msg = ok ? 'BCD run complete.' : 'BCD run failed.';
             this.canvasManager.showNotification(msg);
@@ -340,6 +355,7 @@ class UIController {
             // Clear any existing BCD events, since geometry changed
             this.clearEventsOverlay();
             this.clearCellsOverlay();
+            this.clearCoveragePathOverlay();
             
             this.canvasManager.showNotification('Boundary deleted.');
             this.updateDisplay();
@@ -504,6 +520,7 @@ class UIController {
         // Clear event markers and reset toggle state
         this.clearEventsOverlay();
         this.clearCellsOverlay();
+        this.clearCoveragePathOverlay();
         
         // Reset UI using state manager
         this.uiStateManager.resetAllButtons();
@@ -624,6 +641,7 @@ class UIController {
             // Clear any existing BCD events, since geometry changed
             this.clearEventsOverlay();
             this.clearCellsOverlay();
+            this.clearCoveragePathOverlay();
             this.canvasManager.showNotification('Obstacle deleted.');
             this.updateDisplay();
             this.canvasManager.draw();
@@ -851,6 +869,17 @@ class UIController {
         if (cellsToggle) {
             cellsToggle.checked = false;
             cellsToggle.disabled = true; // disabled until next export provides cells
+        }
+    }
+
+    // Helper: clear coverage path overlay and disable toggle until next run
+    clearCoveragePathOverlay() {
+        this.canvasManager.setPathList([]);
+        this.canvasManager.showCoveragePath = false;
+        const pathToggle = document.getElementById('toggleCoveragePath');
+        if (pathToggle) {
+            pathToggle.checked = false;
+            pathToggle.disabled = true; // disabled until next export provides path
         }
     }
 

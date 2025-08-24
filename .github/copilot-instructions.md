@@ -14,7 +14,7 @@ Purpose: Fast-start guide for AI agents. Keep edits small, follow existing patte
 - Output: Event list JSON with coverage path coordinates returned to frontend for visualization.
 
 ## Build workflow (Windows)
-- Top-level Makefile: `make build` builds `src/app/build/main.exe` with `-lws2_32`; `make clean` resets build and temp dirs. `make build-and-run` builds and runs in one step (but agents should avoid the run part).
+- Top-level Makefile: `make build` builds `src/app/build/main.exe` with `-lws2_32`; `make clean` resets build and temp dirs. `make build-and-run` builds and runs in one step (but agents should avoid the run part!).
 - App Makefile compiles: `main.c`, `webserver.c`, coverage files under `coverage_path_planning/**`, plus vendored `dependencies/{cJSON,mongoose}/*.c`. Add new C sources to `SRC` here.
 - Important: Before `make build`, terminate any running server to avoid locked binaries: `taskkill /F /IM main.exe`.
 - Agent constraints: Only build when C files changed; skip builds for frontend-only edits. Do not run the server or open a browser. Treat a successful `make build` from repo root as the check.
