@@ -9,17 +9,25 @@
 #include "boustrophedon_cellular_decomposition/bcd_cell_computation.h"
 #include "boustrophedon_cellular_decomposition/bcd_coverage_planning.h"
 
-static int parse_input_environment_json(const char *json, input_environment_t *env);
-static int parse_polygon_vertices_from_array(const cJSON *arr, polygon_t *polygon, polygon_winding_t winding);
+static int parse_input_environment_json(const char *json,
+										input_environment_t *env);
+static int parse_polygon_vertices_from_array(const cJSON *arr,
+											 polygon_t *polygon,
+											 polygon_winding_t winding);
 static int polygon_build_edges(polygon_t *polygon);
 
 static void log_event_list(const bcd_event_list_t *event_list);
 static const char *event_type_to_string(bcd_event_type_t t);
 static const char *polygon_type_to_string(polygon_type_t t);
 static char *serialize_event_list_json(const bcd_event_list_t *event_list);
-static char *serialize_result_json(const bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) * cell_list);
+static char *serialize_result_json(const bcd_event_list_t *event_list,
+								   cvector_vector_type(bcd_cell_t) * cell_list);
 
-static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) * cell_list, int rc);
+static char *err_cleanup(input_environment_t *env,
+						 bcd_event_list_t *event_list,
+						 cvector_vector_type(bcd_cell_t) * cell_list,
+						 cvector_vector_type(int) * path_list,
+						 int rc);
 
 char *coverage_path_planning_process(const char *input_environment_json)
 {
@@ -29,7 +37,7 @@ char *coverage_path_planning_process(const char *input_environment_json)
 	if (rc != 0)
 	{
 		printf("coverage_path_planning: parse failed (code %d)\n", rc);
-		return err_cleanup(&env, NULL, NULL, rc);
+		return err_cleanup(&env, NULL, NULL, NULL, rc);
 	}
 
 	bcd_event_list_t event_list;
@@ -40,7 +48,7 @@ char *coverage_path_planning_process(const char *input_environment_json)
 	if (rc != 0)
 	{
 		printf("coverage_path_planning: BCD event list generation failed (code %d)\n", rc);
-		return err_cleanup(&env, &event_list, NULL, rc);
+		return err_cleanup(&env, &event_list, NULL, NULL, rc);
 	}
 	printf("coverage_path_planning: successfully generated %d events\n", event_list.length);
 
@@ -49,19 +57,30 @@ char *coverage_path_planning_process(const char *input_environment_json)
 	if (rc != 0)
 	{
 		printf("coverage_path_planning: BCD cell computation failed (code %d)\n", rc);
-		return err_cleanup(&env, &event_list, &cell_list, rc);
+		return err_cleanup(&env, &event_list, &cell_list, NULL, rc);
 	}
 	printf("coverage_path_planning: successfully generated %d cells\n", cvector_size(cell_list));
 	log_bcd_cell_list((const cvector_vector_type(bcd_cell_t) *) &cell_list);
 
+	cvector_vector_type(int) path_list = NULL;
+	rc = compute_bcd_path_list(&cell_list, -1, &path_list);
+	if (rc != 0)
+	{
+		printf("coverage_path_planning: BCD path computation failed (code %d)\n", rc);
+		return err_cleanup(&env, &event_list, &cell_list, &path_list, rc);
+	}
+	printf("coverage_path_planning: successfully generated path with %d visits\n", cvector_size(path_list));
+	log_bcd_path_list((const cvector_vector_type(int) *)&path_list);
+
 	char *json_out = serialize_result_json(&event_list, &cell_list);
 
-	err_cleanup(&env, &event_list, &cell_list, rc);
+	err_cleanup(&env, &event_list, &cell_list, &path_list, rc);
 
 	return json_out;
 }
 
-static int parse_input_environment_json(const char *json, input_environment_t *env)
+static int parse_input_environment_json(const char *json,
+										input_environment_t *env)
 {
 	if (!json || !env)
 		return -1;
@@ -238,7 +257,8 @@ static char *serialize_event_list_json(const bcd_event_list_t *event_list)
 	return json; // caller must free
 }
 
-static char *serialize_result_json(const bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) * cell_list)
+static char *serialize_result_json(const bcd_event_list_t *event_list,
+								   cvector_vector_type(bcd_cell_t) * cell_list)
 {
 	cJSON *root = cJSON_CreateObject();
 	cJSON_AddStringToObject(root, "status", "ok");
@@ -383,7 +403,9 @@ static char *serialize_result_json(const bcd_event_list_t *event_list, cvector_v
 	return json; // caller must free
 }
 
-static int parse_polygon_vertices_from_array(const cJSON *arr, polygon_t *polygon, polygon_winding_t winding)
+static int parse_polygon_vertices_from_array(const cJSON *arr,
+											 polygon_t *polygon,
+											 polygon_winding_t winding)
 {
 	if (!cJSON_IsArray(arr) || !polygon)
 		return -1;
@@ -521,11 +543,16 @@ static void log_event_list(const bcd_event_list_t *event_list)
 	}
 }
 
-static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list, cvector_vector_type(bcd_cell_t) * cell_list, int rc)
+static char *err_cleanup(input_environment_t *env,
+						 bcd_event_list_t *event_list,
+						 cvector_vector_type(bcd_cell_t) * cell_list,
+						 cvector_vector_type(int) * path_list,
+						 int rc)
 {
 	free_input_environment(env);
 	free_bcd_event_list(event_list);
 	free_bcd_cell_list(cell_list);
+	cvector_free(*path_list);
 
 	cJSON *err = cJSON_CreateObject();
 	cJSON_AddStringToObject(err, "status", "error");
@@ -538,7 +565,8 @@ static char *err_cleanup(input_environment_t *env, bcd_event_list_t *event_list,
 
 // POINT_T helpers
 
-bool are_equal_points(point_t a, point_t b)
+bool are_equal_points(point_t a,
+					  point_t b)
 {
 	return a.x == b.x && a.y == b.y;
 }
