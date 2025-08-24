@@ -3,6 +3,8 @@
 #include "../../../../dependencies/cvector/cvector.h"
 #include "bcd_coverage_planning.h"
 
+// COMPUTE_BCD_PATH_LIST
+
 static void add_cell_to_path(cvector_vector_type(int) * path_list,
                              cvector_vector_type(bcd_cell_t) * cell_list,
                              int cell_index,
@@ -27,6 +29,14 @@ cvector_vector_type(int) find_shortest_path(int cell_index_from,
 // ---
 
 static bool should_backtrack(int *curr_path_index);
+
+// COMPUTE_BCD_MOTION
+
+// --- COMPUTE_BCD_MOTION
+
+static cvector_vector_type(point_t) compute_boustrophedon_motion(const cvector_vector_type(bcd_cell_t) * cell_list,
+                                                                 int cell_index,
+                                                                 float step_size);
 
 // IMPLEMENTATION --- compute_bcd_path_list -------------------------
 
@@ -310,4 +320,56 @@ void log_bcd_path_list(const cvector_vector_type(int) * path_list)
     {
         printf("  [%d]: Cell %d\n", i, (*path_list)[i]);
     }
+}
+
+// IMPLEMENTATION --- compute_bcd_motion ----------------------------
+
+int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
+                       const cvector_vector_type(int) * path_list,
+                       bcd_motion_plan_t *motion_plan,
+                       int step_size)
+{
+    size_t i;
+    for (i = 0; i < cvector_size(*path_list); ++i)
+    {
+        if ((*cell_list)[(*path_list)[i]].cleaned == true)
+        {
+            continue;
+        }
+        
+        cvector_vector_type(point_t) ox = NULL;
+        ox = compute_boustrophedon_motion((const cvector_vector_type(bcd_cell_t) *)cell_list,
+                                          (*path_list)[i],
+                                          step_size);
+        if (ox == NULL)
+        {
+            return -1;
+        }
+
+        cell_motion_plan_t curr_section;
+        curr_section.ox = ox;
+
+        cvector_push_back(motion_plan->section, curr_section);
+
+        (*cell_list)[(*path_list)[i]].cleaned = true;
+    }
+}
+
+// --- COMPUTE_BCD_MOTION
+
+static cvector_vector_type(point_t) compute_boustrophedon_motion(const cvector_vector_type(bcd_cell_t) * cell_list,
+                                                                 int cell_index,
+                                                                 float step_size) // the distance between two parallel line segments
+{
+    cvector_vector_type(point_t) ox = NULL;
+
+    // Calculate back and forth motion
+
+    return ox;
+}
+
+// MOTION_PLAN HELPERS
+
+void log_bcd_motion(const bcd_motion_plan_t motion_plan)
+{
 }
