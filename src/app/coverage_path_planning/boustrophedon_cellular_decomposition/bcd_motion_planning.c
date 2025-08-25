@@ -45,10 +45,13 @@ static void add_edge_transition_path(cvector_vector_type(point_t) * path,
                                      float start_x,
                                      float end_x);
 
-// --- --- COMPUTE_CONNECTION_MOTION
+// --- --- COMPUTE_BOUSTROPHEDON_MOTION
 
 static cvector_vector_type(point_t) compute_connection_motion(const cvector_vector_type(bcd_cell_t) * cell_list,
+                                                              const cvector_vector_type(int) * path_list,
+                                                              int begin_cell_index,
                                                               point_t begin_point,
+                                                              int end_cell_index,
                                                               point_t end_point);
 
 // IMPLEMENTATION --- compute_bcd_motion ----------------------------
@@ -58,7 +61,9 @@ int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
                        bcd_motion_plan_t *motion_plan,
                        float step_size)
 {
+    int begin_cell_index;
     point_t begin_point = {0};
+    int end_cell_index;
     point_t end_point = {0};
     bool compute_nav = false;
 
@@ -83,10 +88,14 @@ int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
 
         if (compute_nav)
         {
+            end_cell_index = (*path_list)[i];
             end_point = *cvector_front(ox);
 
             nav = compute_connection_motion((const cvector_vector_type(bcd_cell_t) *)cell_list,
+                                            (const cvector_vector_type(int) *)path_list,
+                                            begin_cell_index,
                                             begin_point,
+                                            end_cell_index,
                                             end_point);
         }
 
@@ -98,6 +107,7 @@ int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
 
         (*cell_list)[(*path_list)[i]].cleaned = true;
 
+        begin_cell_index = (*path_list)[i];
         begin_point = *cvector_back(ox);
         compute_nav = true;
     }
@@ -393,10 +403,13 @@ static void add_edge_transition_path(cvector_vector_type(point_t) * path,
     }
 }
 
-// --- --- COMPUTE_CONNECTION_MOTION
+// --- --- COMPUTE_BOUSTROPHEDON_MOTION
 
 static cvector_vector_type(point_t) compute_connection_motion(const cvector_vector_type(bcd_cell_t) * cell_list,
+                                                              const cvector_vector_type(int) * path_list,
+                                                              int begin_cell_index,
                                                               point_t begin_point,
+                                                              int end_cell_index,
                                                               point_t end_point)
 {
     return NULL;
