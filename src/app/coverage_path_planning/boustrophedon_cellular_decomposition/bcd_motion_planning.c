@@ -45,6 +45,12 @@ static void add_edge_transition_path(cvector_vector_type(point_t) * path,
                                      float start_x,
                                      float end_x);
 
+// --- --- COMPUTE_CONNECTION_MOTION
+
+static cvector_vector_type(point_t) compute_connection_motion(const cvector_vector_type(bcd_cell_t) * cell_list,
+                                                              point_t begin_point,
+                                                              point_t end_point);
+
 // IMPLEMENTATION --- compute_bcd_motion ----------------------------
 
 int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
@@ -52,6 +58,10 @@ int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
                        bcd_motion_plan_t *motion_plan,
                        float step_size)
 {
+    point_t begin_point = {0};
+    point_t end_point = {0};
+    bool compute_nav = false;
+
     size_t i;
     for (i = 0; i < cvector_size(*path_list); ++i)
     {
@@ -69,13 +79,27 @@ int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
             return -1;
         }
 
+        cvector_vector_type(point_t) nav = NULL;
+
+        if (compute_nav)
+        {
+            end_point = *cvector_front(ox);
+
+            nav = compute_connection_motion((const cvector_vector_type(bcd_cell_t) *)cell_list,
+                                            begin_point,
+                                            end_point);
+        }
+
         cell_motion_plan_t curr_section;
         curr_section.ox = ox;
-        curr_section.nav = NULL; // Navigation not implemented yet
+        curr_section.nav = nav; // Navigation not implemented yet
 
         cvector_push_back(motion_plan->section, curr_section);
 
         (*cell_list)[(*path_list)[i]].cleaned = true;
+
+        begin_point = *cvector_back(ox);
+        compute_nav = true;
     }
 
     return 0;
@@ -367,6 +391,15 @@ static void add_edge_transition_path(cvector_vector_type(point_t) * path,
             }
         }
     }
+}
+
+// --- --- COMPUTE_CONNECTION_MOTION
+
+static cvector_vector_type(point_t) compute_connection_motion(const cvector_vector_type(bcd_cell_t) * cell_list,
+                                                              point_t begin_point,
+                                                              point_t end_point)
+{
+    return NULL;
 }
 
 // MOTION_PLAN HELPERS

@@ -23,6 +23,7 @@ class CanvasManager {
     this.showCoveragePath = false; // toggle for coverage path visualization
     this.pathList = []; // last received path list from backend
     this.showMotionPlan = false; // toggle for motion plan visualization
+    this.showMotionPlanNav = false; // toggle for motion plan navigation only visualization
     this.motionPlan = null; // last received motion plan from backend
         
         // Notification system
@@ -73,6 +74,9 @@ class CanvasManager {
 
     // Draw motion plan overlay (if enabled)
     if (this.showMotionPlan && this.motionPlan && this.motionPlan.sections) this.drawMotionPlan();
+
+    // Draw motion plan navigation overlay (if enabled)
+    if (this.showMotionPlanNav && this.motionPlan && this.motionPlan.sections) this.drawMotionPlanNav();
 
     // Draw notification if present
         if (this.notification) this.drawNotification();
@@ -534,7 +538,7 @@ class CanvasManager {
         this.ctx.save();
         
         // Draw coverage motion (boustrophedon patterns)
-        this.ctx.strokeStyle = '#3c78e7ff'; // Red for coverage paths
+        this.ctx.strokeStyle = '#2F96DA'; // Calestial Blue for coverage paths
         this.ctx.lineWidth = Math.max(2, 3 / this.scale);
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
@@ -565,7 +569,7 @@ class CanvasManager {
         }
         
         // Draw navigation paths between sections
-        this.ctx.strokeStyle = '#3498db'; // Blue for navigation paths
+        this.ctx.strokeStyle = '#2F96DA'; // Celestial Blue for navigation paths
         this.ctx.lineWidth = Math.max(1, 2 / this.scale);
         this.ctx.setLineDash([5, 5]); // Dashed line for navigation
         
@@ -596,7 +600,7 @@ class CanvasManager {
         this.ctx.setLineDash([]);
         
         // Draw section start/end points
-        this.ctx.fillStyle = '#27ae60'; // Green for start points
+        this.ctx.fillStyle = '#E79F0D'; // Gamboge for start points
         for (let i = 0; i < this.motionPlan.sections.length; i++) {
             const section = this.motionPlan.sections[i];
             
@@ -615,12 +619,101 @@ class CanvasManager {
                     const endPoint = section.coverage[section.coverage.length - 1];
                     const endX = endPoint.x * this.pixelsPerMeter;
                     const endY = endPoint.y * this.pixelsPerMeter;
-                    
-                    this.ctx.fillStyle = '#e67e22'; // Orange for end points
+
+                    this.ctx.fillStyle = '#737BD4'; // Glaucous for end points
                     this.ctx.beginPath();
                     this.ctx.arc(endX, endY, Math.max(3, 4 / this.scale), 0, 2 * Math.PI);
                     this.ctx.fill();
-                    this.ctx.fillStyle = '#27ae60'; // Reset to green
+                    this.ctx.fillStyle = '#E79F0D'; // Reset to Gamboge
+                }
+            }
+        }
+        
+        this.ctx.restore();
+    }
+
+    drawMotionPlanNav() {
+        if (!this.motionPlan || !this.motionPlan.sections || this.motionPlan.sections.length === 0) {
+            return;
+        }
+
+        this.ctx.save();
+        
+        // Draw navigation paths between sections
+        this.ctx.strokeStyle = '#2F96DA'; // Celestial Blue for navigation paths
+        this.ctx.lineWidth = Math.max(1, 2 / this.scale);
+        this.ctx.setLineDash([5, 5]); // Dashed line for navigation
+        
+        for (let i = 0; i < this.motionPlan.sections.length; i++) {
+            const section = this.motionPlan.sections[i];
+            
+            // Draw navigation points
+            if (section.navigation && section.navigation.length > 1) {
+                this.ctx.beginPath();
+                
+                for (let j = 0; j < section.navigation.length; j++) {
+                    const point = section.navigation[j];
+                    const x = point.x * this.pixelsPerMeter;
+                    const y = point.y * this.pixelsPerMeter;
+                    
+                    if (j === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+                
+                this.ctx.stroke();
+            }
+        }
+        
+        // Reset line dash
+        this.ctx.setLineDash([]);
+        
+        // Draw section start/end points only (beginning and end of coverage sections)
+        this.ctx.fillStyle = '#E79F0D'; // Gamboge for start points
+        for (let i = 0; i < this.motionPlan.sections.length; i++) {
+            const section = this.motionPlan.sections[i];
+            
+            if (section.coverage && section.coverage.length > 0) {
+                // Mark start of coverage section
+                const startPoint = section.coverage[0];
+                const startX = startPoint.x * this.pixelsPerMeter;
+                const startY = startPoint.y * this.pixelsPerMeter;
+                
+                this.ctx.beginPath();
+                this.ctx.arc(startX, startY, Math.max(4, 5 / this.scale), 0, 2 * Math.PI);
+                this.ctx.fill();
+                
+                // Mark end of coverage section
+                if (section.coverage.length > 1) {
+                    const endPoint = section.coverage[section.coverage.length - 1];
+                    const endX = endPoint.x * this.pixelsPerMeter;
+                    const endY = endPoint.y * this.pixelsPerMeter;
+
+                    this.ctx.fillStyle = '#737BD4'; // Glaucous for end points
+                    this.ctx.beginPath();
+                    this.ctx.arc(endX, endY, Math.max(4, 5 / this.scale), 0, 2 * Math.PI);
+                    this.ctx.fill();
+                    this.ctx.fillStyle = '#E79F0D'; // Reset to Gamboge
+                }
+            }
+        }
+        
+        // Draw navigation waypoints
+        this.ctx.fillStyle = '#2F96DA'; // Celestial Blue for navigation points
+        for (let i = 0; i < this.motionPlan.sections.length; i++) {
+            const section = this.motionPlan.sections[i];
+            
+            if (section.navigation && section.navigation.length > 0) {
+                for (let j = 0; j < section.navigation.length; j++) {
+                    const point = section.navigation[j];
+                    const x = point.x * this.pixelsPerMeter;
+                    const y = point.y * this.pixelsPerMeter;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, Math.max(2, 3 / this.scale), 0, 2 * Math.PI);
+                    this.ctx.fill();
                 }
             }
         }
@@ -767,7 +860,7 @@ class CanvasManager {
         const isCurrentlyDrawing = this.isDrawingBoundary;
         
         if (points.length >= 2) {
-            this.ctx.strokeStyle = '#27ae60';
+            this.ctx.strokeStyle = '#48D583';
             this.ctx.lineWidth = 3 / this.scale;
             this.ctx.beginPath();
             this.ctx.moveTo(points[0].x * this.pixelsPerMeter, points[0].y * this.pixelsPerMeter);

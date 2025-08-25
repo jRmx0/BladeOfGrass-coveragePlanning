@@ -37,6 +37,7 @@ class UIController {
         const toggleCellsSwitch = document.getElementById('toggleCells');
         const toggleCoveragePathSwitch = document.getElementById('toggleCoveragePath');
         const toggleMotionPlanSwitch = document.getElementById('toggleMotionPlan');
+        const toggleMotionPlanNavSwitch = document.getElementById('toggleMotionPlanNav');
         if (toggleVertexSwitch) {
             toggleVertexSwitch.addEventListener('change', (e) => {
                 // If enabling vertex numbers, disable events and cells
@@ -96,6 +97,22 @@ class UIController {
         if (toggleMotionPlanSwitch) {
             toggleMotionPlanSwitch.addEventListener('change', (e) => {
                 this.canvasManager.showMotionPlan = !!e.target.checked;
+                // If enabling motion plan, disable motion plan nav
+                if (e.target.checked && toggleMotionPlanNavSwitch && toggleMotionPlanNavSwitch.checked) {
+                    toggleMotionPlanNavSwitch.checked = false;
+                    this.canvasManager.showMotionPlanNav = false;
+                }
+                this.canvasManager.draw();
+            });
+        }
+        if (toggleMotionPlanNavSwitch) {
+            toggleMotionPlanNavSwitch.addEventListener('change', (e) => {
+                this.canvasManager.showMotionPlanNav = !!e.target.checked;
+                // If enabling motion plan nav, disable full motion plan
+                if (e.target.checked && toggleMotionPlanSwitch && toggleMotionPlanSwitch.checked) {
+                    toggleMotionPlanSwitch.checked = false;
+                    this.canvasManager.showMotionPlan = false;
+                }
                 this.canvasManager.draw();
             });
         }
@@ -319,9 +336,11 @@ class UIController {
             // Store motion plan if present
             if (resp && resp.motion_plan) {
                 this.canvasManager.setMotionPlan(resp.motion_plan);
-                // Enable motion plan toggle
+                // Enable motion plan toggles
                 const ms = document.getElementById('toggleMotionPlan');
                 if (ms) ms.disabled = false;
+                const msNav = document.getElementById('toggleMotionPlanNav');
+                if (msNav) msNav.disabled = false;
             }
             const msg = ok ? 'BCD run complete.' : 'BCD run failed.';
             this.canvasManager.showNotification(msg);
@@ -901,10 +920,16 @@ class UIController {
     clearMotionPlanOverlay() {
         this.canvasManager.setMotionPlan(null);
         this.canvasManager.showMotionPlan = false;
+        this.canvasManager.showMotionPlanNav = false;
         const motionToggle = document.getElementById('toggleMotionPlan');
         if (motionToggle) {
             motionToggle.checked = false;
             motionToggle.disabled = true; // disabled until next motion plan is generated
+        }
+        const motionNavToggle = document.getElementById('toggleMotionPlanNav');
+        if (motionNavToggle) {
+            motionNavToggle.checked = false;
+            motionNavToggle.disabled = true; // disabled until next motion plan is generated
         }
     }
 
