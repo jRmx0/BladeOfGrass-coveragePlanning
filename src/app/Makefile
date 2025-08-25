@@ -8,6 +8,7 @@ SRC = main.c webserver.c \
 	coverage_path_planning/boustrophedon_cellular_decomposition/bcd_event_list_building.c \
 	coverage_path_planning/boustrophedon_cellular_decomposition/bcd_cell_computation.c \
 	coverage_path_planning/boustrophedon_cellular_decomposition/bcd_coverage_planning.c \
+	coverage_path_planning/boustrophedon_cellular_decomposition/bcd_motion_planning.c \
 	../../dependencies/cJSON/cJSON.c \
 	../../dependencies/mongoose/mongoose.c
 BUILD_DIR = build

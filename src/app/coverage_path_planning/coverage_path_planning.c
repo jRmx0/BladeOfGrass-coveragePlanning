@@ -8,6 +8,7 @@
 #include "boustrophedon_cellular_decomposition/bcd_event_list_building.h"
 #include "boustrophedon_cellular_decomposition/bcd_cell_computation.h"
 #include "boustrophedon_cellular_decomposition/bcd_coverage_planning.h"
+#include "boustrophedon_cellular_decomposition/bcd_motion_planning.h"
 
 static int parse_input_environment_json(const char *json,
 										input_environment_t *env);
