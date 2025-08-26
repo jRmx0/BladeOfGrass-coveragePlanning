@@ -9,13 +9,14 @@ Purpose: Fast-start guide for AI agents. Keep edits small, follow existing patte
 
 ## Coverage Path Planning Core
 - Entry point: `coverage_path_planning_process(json_str)` in `coverage_path_planning.c` receives environment JSON, orchestrates BCD algorithm.
-- BCD implementation: `boustrophedon_cellular_decomposition/` contains cell computation, coverage planning, and event list building modules.
+- BCD implementation: `boustrophedon_cellular_decomposition/` contains cell computation, coverage planning, motion planning, and event list building modules.
 - Data types: `point_t`, `polygon_edge_t`, `polygon_winding_t` (CW=boundary, CCW=obstacle), `polygon_type_t` defined in `coverage_path_planning.h`.
 - Output: Event list JSON with coverage path coordinates returned to frontend for visualization.
 
 ## Build workflow (Windows)
 - Top-level Makefile: `make build` builds `src/app/build/main.exe` with `-lws2_32`; `make clean` resets build and temp dirs. `make build-and-run` builds and runs in one step (but agents should avoid the run part!).
 - App Makefile compiles: `main.c`, `webserver.c`, coverage files under `coverage_path_planning/**`, plus vendored `dependencies/{cJSON,mongoose}/*.c`. Add new C sources to `SRC` here.
+- Include paths: `-I./coverage_path_planning -I./coverage_path_planning/boustrophedon_cellular_decomposition` for headers.
 - Important: Before `make build`, terminate any running server to avoid locked binaries: `taskkill /F /IM main.exe`.
 - Agent constraints: Only build when C files changed; skip builds for frontend-only edits. Do not run the server or open a browser. Treat a successful `make build` from repo root as the check.
 
@@ -28,6 +29,7 @@ Purpose: Fast-start guide for AI agents. Keep edits small, follow existing patte
 - Init: `webserver_init` → `mg_http_listen(mgr, listen_url, webserver_event_handler, NULL)`; `main.c` polls `mg_mgr`.
 - Routing: `webserver_event_handler` switches on `get_route_type(hm->uri)` and calls handlers. Routes include static assets and JSON endpoints.
 - Static files: `mg_http_serve_file(c, hm, "../../web/path_canvas/...", &opts)`; test page uses `../../web/test/...`. Paths are relative to `src/app/webserver.c`.
+- Memory management: Use `cvector` for dynamic arrays (`cvector_vector_type(point_t)`, `cvector_size()`, `cvector_push_back()`). Always `cvector_free()` when done.
 - JSON examples:
   - `/send` → `handle_send_route`: parse body with cJSON, reply JSON with CORS headers.
   - `/environment/InputEnvironment/export` → `handle_path_input_environment_export_route`: consumes environment JSON, calls `coverage_path_planning_process(body_str)`, replies event list JSON with CORS.

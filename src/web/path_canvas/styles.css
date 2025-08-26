@@ -1,3 +1,92 @@
+/* CSS Custom Properties for Canvas Visualization */
+:root {
+    /* Event Colors */
+    --event-default: #8e44ad;
+    --event-in: #2ecc71;
+    --event-out: #e74c3c;
+    --event-floor: #3498db;
+    --event-ceiling: #f1c40f;
+    --event-b-init: #2ecc71;
+    --event-b-deinit: #e74c3c;
+
+    /* Cell Colors */
+    --cell-border: #000000;
+    --cell-fill: rgba(0, 0, 0, 0.05);
+
+    /* Coverage Path Colors */
+    --coverage-path: #2ecc71;
+    --coverage-path-first-visit: #2e50ccff;
+    --coverage-path-revisit: #ffa425ff;
+
+    /* Motion Plan Colors */
+    --motion-plan-coverage: #2F96DA;
+    --motion-plan-navigation: #2F96DA;
+    --motion-plan-start: #E79F0D;
+    --motion-plan-end: #737BD4;
+    --motion-plan-nav-waypoint: #2F96DA;
+
+    /* Polygon Colors */
+    --boundary-stroke: #008618ff;
+    --boundary-stroke-drawing: #48D583;
+    --boundary-fill: rgba(39, 174, 96, 0.1);
+    --boundary-vertex-drawing: #229954;
+    --boundary-vertex-complete: #27ae60;
+    --obstacle-stroke: #c11010ff;
+    --obstacle-stroke-drawing: #e74c3c;
+    --obstacle-fill: rgba(231, 76, 60, 0.15);
+    --obstacle-vertex: #c0392b;
+    --polygon-vertex: #000000;
+
+    /* Arrow Colors */
+    --arrow-color: #27ae60;
+
+    /* Grid Colors */
+    --grid-line: #e0e0e0;
+    --grid-axis: #c0c0c0;
+
+    /* Notification Colors */
+    --notification-shadow: rgba(0, 0, 0, 0.15);
+    --notification-bg-start: rgba(45, 55, 72, 0.98);
+    --notification-bg-end: rgba(26, 32, 44, 0.98);
+    --notification-border: rgba(255, 255, 255, 0.1);
+    --notification-icon-bg: rgba(59, 130, 246, 0.9);
+    --notification-icon-text: #ffffff;
+    --notification-text: #e2e8f0;
+
+    /* Text Colors */
+    --text-primary: #000000;
+    --text-contrast: #ffffff;
+    --text-outline: rgba(0, 0, 0, 0.6);
+
+    /* Fonts */
+    --font-family-primary: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-family-canvas: 'Segoe UI', Arial, sans-serif;
+    --font-family-monospace: 'Consolas', 'Monaco', 'Courier New', monospace;
+
+    /* Line Widths (base values - will be scaled by zoom) */
+    --line-width-thin: 1;
+    --line-width-normal: 2;
+    --line-width-thick: 3;
+    --line-width-coverage: 4;
+
+    /* Point Radii (base values - will be scaled by zoom) */
+    --point-radius-small: 2;
+    --point-radius-normal: 3;
+    --point-radius-large: 4;
+    --point-radius-vertex: 5;
+    --point-radius-motion: 5;
+
+    /* Font Sizes (base values - will be scaled by zoom) */
+    --font-size-small: 7;
+    --font-size-normal: 9;
+    --font-size-large: 12;
+    --font-size-vertex-label: 10;
+    --font-size-motion-label: 10;
+    --font-size-cell-label: 16;
+    --font-size-notification-title: 13;
+    --font-size-notification-icon: 11;
+}
+
 /* Reset and Base Styles */
 * {
     margin: 0;
@@ -351,14 +440,19 @@ input:checked + .slider {
     background-color: #3498db;
 }
 
+input:disabled + .slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 input:focus + .slider {
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
 }
 
 input:checked + .slider:before {
-    -webkit-transform: translateX(24px);
-    -ms-transform: translateX(24px);
-    transform: translateX(24px);
+    -webkit-transform: translateX(22px);
+    -ms-transform: translateX(22px);
+    transform: translateX(22px);
 }
 
 .slider.round {

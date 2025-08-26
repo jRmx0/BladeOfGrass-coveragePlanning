@@ -38,6 +38,7 @@ class UIController {
         const toggleCoveragePathSwitch = document.getElementById('toggleCoveragePath');
         const toggleMotionPlanSwitch = document.getElementById('toggleMotionPlan');
         const toggleMotionPlanNavSwitch = document.getElementById('toggleMotionPlanNav');
+        const toggleMotionSectionNumbersSwitch = document.getElementById('toggleMotionSectionNumbers');
         if (toggleVertexSwitch) {
             toggleVertexSwitch.addEventListener('change', (e) => {
                 // If enabling vertex numbers, disable events and cells
@@ -64,11 +65,10 @@ class UIController {
                     }
                     if (toggleCellsSwitch && toggleCellsSwitch.checked) {
                         toggleCellsSwitch.checked = false;
-                        this.canvasManager.showCells = false;
+                        this.canvasManager.setVisualizationState('cells', false);
                     }
                 }
-                this.canvasManager.showEvents = !!e.target.checked;
-                this.canvasManager.draw();
+                this.canvasManager.setVisualizationState('events', !!e.target.checked);
             });
         }
         if (toggleCellsSwitch) {
@@ -81,39 +81,40 @@ class UIController {
                     }
                     if (toggleEventsSwitch && toggleEventsSwitch.checked) {
                         toggleEventsSwitch.checked = false;
-                        this.canvasManager.showEvents = false;
+                        this.canvasManager.setVisualizationState('events', false);
                     }
                 }
-                this.canvasManager.showCells = !!e.target.checked;
-                this.canvasManager.draw();
+                this.canvasManager.setVisualizationState('cells', !!e.target.checked);
             });
         }
         if (toggleCoveragePathSwitch) {
             toggleCoveragePathSwitch.addEventListener('change', (e) => {
-                this.canvasManager.showCoveragePath = !!e.target.checked;
-                this.canvasManager.draw();
+                this.canvasManager.setVisualizationState('coveragePath', !!e.target.checked);
             });
         }
         if (toggleMotionPlanSwitch) {
             toggleMotionPlanSwitch.addEventListener('change', (e) => {
-                this.canvasManager.showMotionPlan = !!e.target.checked;
+                this.canvasManager.setVisualizationState('motionPlan', !!e.target.checked);
                 // If enabling motion plan, disable motion plan nav
                 if (e.target.checked && toggleMotionPlanNavSwitch && toggleMotionPlanNavSwitch.checked) {
                     toggleMotionPlanNavSwitch.checked = false;
-                    this.canvasManager.showMotionPlanNav = false;
+                    this.canvasManager.setVisualizationState('motionPlanNav', false);
                 }
-                this.canvasManager.draw();
             });
         }
         if (toggleMotionPlanNavSwitch) {
             toggleMotionPlanNavSwitch.addEventListener('change', (e) => {
-                this.canvasManager.showMotionPlanNav = !!e.target.checked;
+                this.canvasManager.setVisualizationState('motionPlanNav', !!e.target.checked);
                 // If enabling motion plan nav, disable full motion plan
                 if (e.target.checked && toggleMotionPlanSwitch && toggleMotionPlanSwitch.checked) {
                     toggleMotionPlanSwitch.checked = false;
-                    this.canvasManager.showMotionPlan = false;
+                    this.canvasManager.setVisualizationState('motionPlan', false);
                 }
-                this.canvasManager.draw();
+            });
+        }
+        if (toggleMotionSectionNumbersSwitch) {
+            toggleMotionSectionNumbersSwitch.addEventListener('change', (e) => {
+                this.canvasManager.setVisualizationState('motionSectionNumbers', !!e.target.checked);
             });
         }
         document.getElementById('clearCanvas').addEventListener('click', () => { this.cancelAllModes(); this.clearCanvas(); });
@@ -153,12 +154,11 @@ class UIController {
     toggleVertexNumbers(isOn) {
         // If param not provided (legacy), flip; otherwise set from switch state
         if (typeof isOn === 'boolean') {
-            this.canvasManager.showVertexNumbers = isOn;
+            this.canvasManager.setVisualizationState('vertexNumbers', isOn);
         } else {
-            this.canvasManager.showVertexNumbers = !this.canvasManager.showVertexNumbers;
+            this.canvasManager.setVisualizationState('vertexNumbers', !this.canvasManager.showVertexNumbers);
         }
         this.updateDisplay();
-        this.canvasManager.draw();
     }
 
     openSaveModal() {
@@ -286,9 +286,8 @@ class UIController {
         this.canvasManager.isDrawingObstacle = false;
         
         // Clear event markers and reset toggle state
-        this.clearEventsOverlay();
-        this.clearCellsOverlay();
-        this.clearCoveragePathOverlay();
+        this.canvasManager.clearAllVisualizationData();
+        this.resetAllToggleStates();
         
         // Update UI
         this.uiStateManager.resetAllButtons();
@@ -341,6 +340,8 @@ class UIController {
                 if (ms) ms.disabled = false;
                 const msNav = document.getElementById('toggleMotionPlanNav');
                 if (msNav) msNav.disabled = false;
+                const msNumbers = document.getElementById('toggleMotionSectionNumbers');
+                if (msNumbers) msNumbers.disabled = false;
             }
             const msg = ok ? 'BCD run complete.' : 'BCD run failed.';
             this.canvasManager.showNotification(msg);
@@ -921,6 +922,7 @@ class UIController {
         this.canvasManager.setMotionPlan(null);
         this.canvasManager.showMotionPlan = false;
         this.canvasManager.showMotionPlanNav = false;
+        this.canvasManager.showMotionSectionNumbers = false;
         const motionToggle = document.getElementById('toggleMotionPlan');
         if (motionToggle) {
             motionToggle.checked = false;
@@ -931,6 +933,32 @@ class UIController {
             motionNavToggle.checked = false;
             motionNavToggle.disabled = true; // disabled until next motion plan is generated
         }
+        const motionSectionToggle = document.getElementById('toggleMotionSectionNumbers');
+        if (motionSectionToggle) {
+            motionSectionToggle.checked = false;
+            motionSectionToggle.disabled = true; // disabled until next motion plan is generated
+        }
+    }
+
+    resetAllToggleStates() {
+        // Reset and disable all visualization toggles
+        const toggles = [
+            { id: 'toggleEvents', state: 'events' },
+            { id: 'toggleCells', state: 'cells' },
+            { id: 'toggleCoveragePath', state: 'coveragePath' },
+            { id: 'toggleMotionPlan', state: 'motionPlan' },
+            { id: 'toggleMotionPlanNav', state: 'motionPlanNav' },
+            { id: 'toggleMotionSectionNumbers', state: 'motionSectionNumbers' }
+        ];
+
+        toggles.forEach(({ id, state }) => {
+            const toggle = document.getElementById(id);
+            if (toggle) {
+                toggle.checked = false;
+                toggle.disabled = true;
+                this.canvasManager.setVisualizationState(state, false);
+            }
+        });
     }
 
     // Ensure no two points in environment share the same x value.

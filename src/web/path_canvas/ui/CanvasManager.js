@@ -16,6 +16,7 @@ class CanvasManager {
         this.currentObstacle = null; // Track current obstacle being drawn
     this.showVertexNumbers = false; // debug toggle
     this.vertexScale = 1; // scales point radius when showVertexNumbers is on
+    this.showMotionSectionNumbers = false; // toggle for motion plan section numbers
     this.showEvents = false; // debug toggle for events
     this.events = []; // last received events from backend
     this.showCells = false; // debug toggle for cells
@@ -26,11 +27,178 @@ class CanvasManager {
     this.showMotionPlanNav = false; // toggle for motion plan navigation only visualization
     this.motionPlan = null; // last received motion plan from backend
         
+    // Centralized canvas state management
+    this.canvasState = {
+        hasEvents: false,
+        hasCells: false,
+        hasCoveragePath: false,
+        hasMotionPlan: false,
+        visualizationStates: {
+            events: false,
+            cells: false,
+            coveragePath: false,
+            motionPlan: false,
+            motionPlanNav: false,
+            vertexNumbers: false,
+            motionSectionNumbers: false
+        }
+    };
+        
         // Notification system
         this.notification = null;
         this.notificationTimer = null;
         
         this.setupCanvas();
+        this.initializeStyles();
+    }
+
+    // Centralized Styling System
+    initializeStyles() {
+        // Get computed CSS custom properties
+        const root = document.documentElement;
+        const computedStyle = getComputedStyle(root);
+        
+        this.styles = {
+            // Event colors
+            events: {
+                default: computedStyle.getPropertyValue('--event-default').trim(),
+                in: computedStyle.getPropertyValue('--event-in').trim(),
+                out: computedStyle.getPropertyValue('--event-out').trim(),
+                floor: computedStyle.getPropertyValue('--event-floor').trim(),
+                ceiling: computedStyle.getPropertyValue('--event-ceiling').trim(),
+                bInit: computedStyle.getPropertyValue('--event-b-init').trim(),
+                bDeinit: computedStyle.getPropertyValue('--event-b-deinit').trim()
+            },
+            // Cell colors
+            cells: {
+                border: computedStyle.getPropertyValue('--cell-border').trim(),
+                fill: computedStyle.getPropertyValue('--cell-fill').trim()
+            },
+            // Coverage path colors
+            coverage: {
+                path: computedStyle.getPropertyValue('--coverage-path').trim(),
+                firstVisit: computedStyle.getPropertyValue('--coverage-path-first-visit').trim(),
+                revisit: computedStyle.getPropertyValue('--coverage-path-revisit').trim()
+            },
+            // Motion plan colors
+            motion: {
+                coverage: computedStyle.getPropertyValue('--motion-plan-coverage').trim(),
+                navigation: computedStyle.getPropertyValue('--motion-plan-navigation').trim(),
+                start: computedStyle.getPropertyValue('--motion-plan-start').trim(),
+                end: computedStyle.getPropertyValue('--motion-plan-end').trim(),
+                navWaypoint: computedStyle.getPropertyValue('--motion-plan-nav-waypoint').trim()
+            },
+            // Polygon colors
+            polygons: {
+                boundary: computedStyle.getPropertyValue('--boundary-stroke').trim(),
+                boundaryDrawing: computedStyle.getPropertyValue('--boundary-stroke-drawing').trim(),
+                boundaryFill: computedStyle.getPropertyValue('--boundary-fill').trim(),
+                boundaryVertexDrawing: computedStyle.getPropertyValue('--boundary-vertex-drawing').trim(),
+                boundaryVertexComplete: computedStyle.getPropertyValue('--boundary-vertex-complete').trim(),
+                obstacle: computedStyle.getPropertyValue('--obstacle-stroke').trim(),
+                obstacleDrawing: computedStyle.getPropertyValue('--obstacle-stroke-drawing').trim(),
+                obstacleFill: computedStyle.getPropertyValue('--obstacle-fill').trim(),
+                obstacleVertex: computedStyle.getPropertyValue('--obstacle-vertex').trim(),
+                vertex: computedStyle.getPropertyValue('--polygon-vertex').trim()
+            },
+            // Arrow colors
+            arrow: {
+                color: computedStyle.getPropertyValue('--arrow-color').trim()
+            },
+            // Grid colors
+            grid: {
+                line: computedStyle.getPropertyValue('--grid-line').trim(),
+                axis: computedStyle.getPropertyValue('--grid-axis').trim()
+            },
+            // Notification colors
+            notification: {
+                shadow: computedStyle.getPropertyValue('--notification-shadow').trim(),
+                bgStart: computedStyle.getPropertyValue('--notification-bg-start').trim(),
+                bgEnd: computedStyle.getPropertyValue('--notification-bg-end').trim(),
+                border: computedStyle.getPropertyValue('--notification-border').trim(),
+                iconBg: computedStyle.getPropertyValue('--notification-icon-bg').trim(),
+                iconText: computedStyle.getPropertyValue('--notification-icon-text').trim(),
+                text: computedStyle.getPropertyValue('--notification-text').trim()
+            },
+            // Text colors
+            text: {
+                primary: computedStyle.getPropertyValue('--text-primary').trim(),
+                contrast: computedStyle.getPropertyValue('--text-contrast').trim(),
+                outline: computedStyle.getPropertyValue('--text-outline').trim()
+            },
+            // Fonts
+            fonts: {
+                primary: computedStyle.getPropertyValue('--font-family-primary').trim(),
+                canvas: computedStyle.getPropertyValue('--font-family-canvas').trim(),
+                monospace: computedStyle.getPropertyValue('--font-family-monospace').trim()
+            }
+        };
+
+        // Base values for scaling
+        this.baseValues = {
+            lineWidth: {
+                thin: parseInt(computedStyle.getPropertyValue('--line-width-thin')) || 1,
+                normal: parseInt(computedStyle.getPropertyValue('--line-width-normal')) || 2,
+                thick: parseInt(computedStyle.getPropertyValue('--line-width-thick')) || 3,
+                coverage: parseInt(computedStyle.getPropertyValue('--line-width-coverage')) || 4
+            },
+            pointRadius: {
+                small: parseInt(computedStyle.getPropertyValue('--point-radius-small')) || 2,
+                normal: parseInt(computedStyle.getPropertyValue('--point-radius-normal')) || 3,
+                large: parseInt(computedStyle.getPropertyValue('--point-radius-large')) || 4,
+                vertex: parseInt(computedStyle.getPropertyValue('--point-radius-vertex')) || 5,
+                motion: parseInt(computedStyle.getPropertyValue('--point-radius-motion')) || 5
+            },
+            fontSize: {
+                small: parseInt(computedStyle.getPropertyValue('--font-size-small')) || 7,
+                normal: parseInt(computedStyle.getPropertyValue('--font-size-normal')) || 9,
+                large: parseInt(computedStyle.getPropertyValue('--font-size-large')) || 12,
+                vertexLabel: parseInt(computedStyle.getPropertyValue('--font-size-vertex-label')) || 10,
+                motionLabel: parseInt(computedStyle.getPropertyValue('--font-size-motion-label')) || 10,
+                cellLabel: parseInt(computedStyle.getPropertyValue('--font-size-cell-label')) || 16,
+                notificationTitle: parseInt(computedStyle.getPropertyValue('--font-size-notification-title')) || 13,
+                notificationIcon: parseInt(computedStyle.getPropertyValue('--font-size-notification-icon')) || 11
+            }
+        };
+    }
+
+    // Helper methods for styled values with zoom scaling
+    getScaledLineWidth(baseWidth) {
+        return Math.max(1, baseWidth / this.scale);
+    }
+
+    getScaledPointRadius(baseRadius) {
+        return Math.max(1, baseRadius / this.scale);
+    }
+
+    getScaledFontSize(baseFontSize) {
+        return Math.max(6, Math.round(baseFontSize / this.scale));
+    }
+
+    getEventColor(eventType) {
+        const t = eventType;
+        if (t === 'IN' || t === 'B_IN' || t === 'SIDE_IN' || t === 'B_SIDE_IN') {
+            return this.styles.events.in;
+        } else if (t === 'OUT' || t === 'B_OUT' || t === 'SIDE_OUT' || t === 'B_SIDE_OUT') {
+            return this.styles.events.out;
+        } else if (t === 'FLOOR') {
+            return this.styles.events.floor;
+        } else if (t === 'CEILING') {
+            return this.styles.events.ceiling;
+        } else if (t === 'B_INIT') {
+            return this.styles.events.bInit;
+        } else if (t === 'B_DEINIT') {
+            return this.styles.events.bDeinit;
+        }
+        return this.styles.events.default;
+    }
+
+    setupCanvasText(fontSize, textAlign = 'center', textBaseline = 'middle', font = 'canvas') {
+        const scaledSize = this.getScaledFontSize(fontSize);
+        const fontFamily = this.styles.fonts[font] || this.styles.fonts.canvas;
+        this.ctx.font = `${scaledSize}px ${fontFamily}`;
+        this.ctx.textAlign = textAlign;
+        this.ctx.textBaseline = textBaseline;
     }
     setupCanvas() {
         const container = this.canvas.parentElement;
@@ -40,6 +208,78 @@ class CanvasManager {
         this.offsetX = this.canvas.width / 2;
         this.offsetY = this.canvas.height / 2;
         window.addEventListener('resize', () => this.resizeCanvas());
+    }
+
+    // Centralized Canvas State Management
+    updateCanvasState(dataType, hasData, data = null) {
+        this.canvasState[`has${dataType}`] = hasData;
+        
+        switch(dataType) {
+            case 'Events':
+                this.events = hasData ? data : [];
+                break;
+            case 'Cells':
+                this.cells = hasData ? data : [];
+                break;
+            case 'CoveragePath':
+                this.pathList = hasData ? data : [];
+                break;
+            case 'MotionPlan':
+                this.motionPlan = hasData ? data : null;
+                break;
+        }
+    }
+
+    setVisualizationState(visualizationType, enabled) {
+        this.canvasState.visualizationStates[visualizationType] = enabled;
+        
+        // Update legacy properties for backward compatibility
+        switch(visualizationType) {
+            case 'events':
+                this.showEvents = enabled;
+                break;
+            case 'cells':
+                this.showCells = enabled;
+                break;
+            case 'coveragePath':
+                this.showCoveragePath = enabled;
+                break;
+            case 'motionPlan':
+                this.showMotionPlan = enabled;
+                break;
+            case 'motionPlanNav':
+                this.showMotionPlanNav = enabled;
+                break;
+            case 'vertexNumbers':
+                this.showVertexNumbers = enabled;
+                break;
+            case 'motionSectionNumbers':
+                this.showMotionSectionNumbers = enabled;
+                break;
+        }
+        
+        this.draw();
+    }
+
+    clearAllVisualizationData() {
+        this.canvasState.hasEvents = false;
+        this.canvasState.hasCells = false;
+        this.canvasState.hasCoveragePath = false;
+        this.canvasState.hasMotionPlan = false;
+        
+        this.events = [];
+        this.cells = [];
+        this.pathList = [];
+        this.motionPlan = null;
+        
+        // Reset all visualization states
+        Object.keys(this.canvasState.visualizationStates).forEach(key => {
+            this.setVisualizationState(key, false);
+        });
+    }
+
+    getCanvasState() {
+        return { ...this.canvasState };
     }
     resizeCanvas() {
         const container = this.canvas.parentElement;
@@ -85,57 +325,38 @@ class CanvasManager {
     }
 
     setEvents(eventsArray) {
-        if (Array.isArray(eventsArray)) {
-            this.events = eventsArray;
-        } else {
-            this.events = [];
-        }
+        const hasData = Array.isArray(eventsArray) && eventsArray.length > 0;
+        this.updateCanvasState('Events', hasData, eventsArray);
         this.draw();
     }
 
     setCells(cellsArray) {
-        if (Array.isArray(cellsArray)) {
-            this.cells = cellsArray;
-        } else {
-            this.cells = [];
-        }
+        const hasData = Array.isArray(cellsArray) && cellsArray.length > 0;
+        this.updateCanvasState('Cells', hasData, cellsArray);
         this.draw();
     }
 
     setPathList(pathListArray) {
-        if (Array.isArray(pathListArray)) {
-            this.pathList = pathListArray;
-        } else {
-            this.pathList = [];
-        }
+        const hasData = Array.isArray(pathListArray) && pathListArray.length > 0;
+        this.updateCanvasState('CoveragePath', hasData, pathListArray);
         this.draw();
     }
 
     setMotionPlan(motionPlan) {
-        if (motionPlan && motionPlan.sections) {
-            this.motionPlan = motionPlan;
-        } else {
-            this.motionPlan = null;
-        }
+        const hasData = motionPlan && motionPlan.sections;
+        this.updateCanvasState('MotionPlan', hasData, motionPlan);
         this.draw();
     }
 
     drawEvents() {
-        const r = Math.max(3, 4 / this.scale);
+        const r = this.getScaledPointRadius(this.baseValues.pointRadius.normal);
         for (const ev of this.events) {
             if (!ev || !ev.vertex) continue;
             const x = ev.vertex.x * this.pixelsPerMeter;
             const y = ev.vertex.y * this.pixelsPerMeter;
 
-            // Color per event type
-            const t = ev.event_type || '';
-            let color = '#8e44ad'; // default purple
-            if (t === 'IN' || t === 'B_IN' || t === 'SIDE_IN' || t === 'B_SIDE_IN') color = '#2ecc71';
-            else if (t === 'OUT' || t === 'B_OUT' || t === 'SIDE_OUT' || t === 'B_SIDE_OUT') color = '#e74c3c';
-            else if (t === 'FLOOR') color = '#3498db';
-            else if (t === 'CEILING') color = '#f1c40f';
-            else if (t === 'B_INIT') color = '#2ecc71';
-            else if (t === 'B_DEINIT') color = '#e74c3c';
+            // Get color per event type using centralized styling
+            const color = this.getEventColor(ev.event_type || '');
 
             // Draw marker
             this.ctx.fillStyle = color;
@@ -144,21 +365,19 @@ class CanvasManager {
             this.ctx.fill();
 
             // Optional: small label
-            this.ctx.font = `${Math.max(7, Math.round(9 / this.scale))}px Segoe UI, Arial`;
-            this.ctx.textAlign = 'left';
-            this.ctx.textBaseline = 'top';
+            this.setupCanvasText(this.baseValues.fontSize.normal, 'left', 'top');
             this.ctx.fillStyle = color;
-            this.ctx.fillText(t, x + r + 2, y + r + 2);
+            this.ctx.fillText(ev.event_type || '', x + r + 2, y + r + 2);
         }
     }
 
     drawCells() {
         this.ctx.save();
         
-        // Set drawing properties for cells
-        this.ctx.strokeStyle = '#000000'; // Black border for cells
-        this.ctx.lineWidth = Math.max(1, 2 / this.scale);
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; // Very light fill for visibility
+        // Set drawing properties for cells using centralized styling
+        this.ctx.strokeStyle = this.styles.cells.border;
+        this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.normal);
+        this.ctx.fillStyle = this.styles.cells.fill;
         
         for (let i = 0; i < this.cells.length; i++) {
             const cell = this.cells[i];
@@ -231,10 +450,9 @@ class CanvasManager {
             const centerY = this.findCellVisualCenter(cell).y;
             
             this.ctx.save();
-            this.ctx.fillStyle = '#000000';
-            this.ctx.font = `bold ${Math.max(12, Math.round(16 / this.scale))}px Arial, sans-serif`;
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
+            this.ctx.fillStyle = this.styles.text.primary;
+            this.setupCanvasText(this.baseValues.fontSize.cellLabel, 'center', 'middle');
+            this.ctx.font = `bold ${this.getScaledFontSize(this.baseValues.fontSize.cellLabel)}px ${this.styles.fonts.canvas}`;
             this.ctx.fillText(cell.cell_number.toString(), centerX, centerY);
             this.ctx.restore();
         }
@@ -405,9 +623,9 @@ class CanvasManager {
 
         this.ctx.save();
         
-        // Set path drawing style
-        this.ctx.strokeStyle = '#2ecc71'; // Green path
-        this.ctx.lineWidth = Math.max(3, 4 / this.scale);
+        // Set path drawing style using centralized styling
+        this.ctx.strokeStyle = this.styles.coverage.path;
+        this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.coverage);
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
         
@@ -459,23 +677,22 @@ class CanvasManager {
                 // Draw small sequence number similar to vertex numbers
                 this.ctx.save();
                 
-                // Small background circle
-                const radius = Math.max(6, 8 / this.scale);
-                this.ctx.fillStyle = visitNumber > 1 ? '#ffa425ff' : '#2e50ccff'; // orange for revisits, blue for first visit
+                // Small background circle using centralized colors
+                const radius = this.getScaledPointRadius(this.baseValues.pointRadius.vertex + 1);
+                this.ctx.fillStyle = visitNumber > 1 ? this.styles.coverage.revisit : this.styles.coverage.firstVisit;
                 this.ctx.beginPath();
                 this.ctx.arc(drawX, drawY, radius, 0, 2 * Math.PI);
                 this.ctx.fill();
                 
                 // White outline
-                this.ctx.strokeStyle = '#ffffff';
-                this.ctx.lineWidth = Math.max(1, 1.5 / this.scale);
+                this.ctx.strokeStyle = this.styles.text.contrast;
+                this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.thin + 0.5);
                 this.ctx.stroke();
                 
-                // Small sequence number text
-                this.ctx.fillStyle = '#ffffff';
-                this.ctx.font = `bold ${Math.max(8, Math.round(10 / this.scale))}px Arial, sans-serif`;
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
+                // Small sequence number text using centralized styling
+                this.ctx.fillStyle = this.styles.text.contrast;
+                this.setupCanvasText(this.baseValues.fontSize.vertexLabel, 'center', 'middle');
+                this.ctx.font = `bold ${this.getScaledFontSize(this.baseValues.fontSize.vertexLabel)}px ${this.styles.fonts.canvas}`;
                 this.ctx.fillText((pathIndex + 1).toString(), drawX, drawY);
                 
                 this.ctx.restore();
@@ -506,21 +723,21 @@ class CanvasManager {
                 // Draw start marker for first cell (larger green ring)
                 if (pathIndex === 0) {
                     this.ctx.save();
-                    this.ctx.strokeStyle = '#008618ff';
-                    this.ctx.lineWidth = Math.max(2, 2.5 / this.scale);
+                    this.ctx.strokeStyle = this.styles.polygons.boundary;
+                    this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.thick - 0.5);
                     this.ctx.beginPath();
-                    this.ctx.arc(drawX, drawY, Math.max(8, 10 / this.scale), 0, 2 * Math.PI);
+                    this.ctx.arc(drawX, drawY, this.getScaledPointRadius(this.baseValues.pointRadius.vertex + 3), 0, 2 * Math.PI);
                     this.ctx.stroke();
                     this.ctx.restore();
                 }
                 
-                // Draw end marker for last cell (smaller purple ring)
+                // Draw end marker for last cell (smaller red ring)
                 if (pathIndex === this.pathList.length - 1) {
                     this.ctx.save();
-                    this.ctx.strokeStyle = '#c11010ff';
-                    this.ctx.lineWidth = Math.max(2, 2.5 / this.scale);
+                    this.ctx.strokeStyle = this.styles.polygons.obstacle;
+                    this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.thick - 0.5);
                     this.ctx.beginPath();
-                    this.ctx.arc(drawX, drawY, Math.max(8, 10 / this.scale), 0, 2 * Math.PI);
+                    this.ctx.arc(drawX, drawY, this.getScaledPointRadius(this.baseValues.pointRadius.vertex + 3), 0, 2 * Math.PI);
                     this.ctx.stroke();
                     this.ctx.restore();
                 }
@@ -537,9 +754,9 @@ class CanvasManager {
 
         this.ctx.save();
         
-        // Draw coverage motion (boustrophedon patterns)
-        this.ctx.strokeStyle = '#2F96DA'; // Calestial Blue for coverage paths
-        this.ctx.lineWidth = Math.max(2, 3 / this.scale);
+        // Draw coverage motion (boustrophedon patterns) using centralized styling
+        this.ctx.strokeStyle = this.styles.motion.coverage;
+        this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.thick);
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
         
@@ -568,9 +785,9 @@ class CanvasManager {
             }
         }
         
-        // Draw navigation paths between sections
-        this.ctx.strokeStyle = '#2F96DA'; // Celestial Blue for navigation paths
-        this.ctx.lineWidth = Math.max(1, 2 / this.scale);
+        // Draw navigation paths between sections using centralized styling
+        this.ctx.strokeStyle = this.styles.motion.navigation;
+        this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.normal);
         this.ctx.setLineDash([5, 5]); // Dashed line for navigation
         
         for (let i = 0; i < this.motionPlan.sections.length; i++) {
@@ -599,8 +816,8 @@ class CanvasManager {
         // Reset line dash
         this.ctx.setLineDash([]);
         
-        // Draw section start/end points
-        this.ctx.fillStyle = '#E79F0D'; // Gamboge for start points
+        // Draw section start/end points using centralized styling
+        this.ctx.fillStyle = this.styles.motion.start;
         for (let i = 0; i < this.motionPlan.sections.length; i++) {
             const section = this.motionPlan.sections[i];
             
@@ -611,7 +828,7 @@ class CanvasManager {
                 const startY = startPoint.y * this.pixelsPerMeter;
                 
                 this.ctx.beginPath();
-                this.ctx.arc(startX, startY, Math.max(3, 4 / this.scale), 0, 2 * Math.PI);
+                this.ctx.arc(startX, startY, this.getScaledPointRadius(this.baseValues.pointRadius.large), 0, 2 * Math.PI);
                 this.ctx.fill();
                 
                 // Mark end of coverage
@@ -620,13 +837,18 @@ class CanvasManager {
                     const endX = endPoint.x * this.pixelsPerMeter;
                     const endY = endPoint.y * this.pixelsPerMeter;
 
-                    this.ctx.fillStyle = '#737BD4'; // Glaucous for end points
+                    this.ctx.fillStyle = this.styles.motion.end;
                     this.ctx.beginPath();
-                    this.ctx.arc(endX, endY, Math.max(3, 4 / this.scale), 0, 2 * Math.PI);
+                    this.ctx.arc(endX, endY, this.getScaledPointRadius(this.baseValues.pointRadius.large), 0, 2 * Math.PI);
                     this.ctx.fill();
-                    this.ctx.fillStyle = '#E79F0D'; // Reset to Gamboge
+                    this.ctx.fillStyle = this.styles.motion.start; // Reset to start color
                 }
             }
+        }
+        
+        // Draw section numbers if motion section numbers are enabled
+        if (this.showMotionSectionNumbers) {
+            this.drawMotionPlanSectionLabels();
         }
         
         this.ctx.restore();
@@ -640,8 +862,8 @@ class CanvasManager {
         this.ctx.save();
         
         // Draw navigation paths between sections
-        this.ctx.strokeStyle = '#2F96DA'; // Celestial Blue for navigation paths
-        this.ctx.lineWidth = Math.max(1, 2 / this.scale);
+        this.ctx.strokeStyle = this.styles.motion.navigation;
+        this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.normal);
         this.ctx.setLineDash([5, 5]); // Dashed line for navigation
         
         for (let i = 0; i < this.motionPlan.sections.length; i++) {
@@ -671,7 +893,7 @@ class CanvasManager {
         this.ctx.setLineDash([]);
         
         // Draw section start/end points only (beginning and end of coverage sections)
-        this.ctx.fillStyle = '#E79F0D'; // Gamboge for start points
+        this.ctx.fillStyle = this.styles.motion.start;
         for (let i = 0; i < this.motionPlan.sections.length; i++) {
             const section = this.motionPlan.sections[i];
             
@@ -682,7 +904,7 @@ class CanvasManager {
                 const startY = startPoint.y * this.pixelsPerMeter;
                 
                 this.ctx.beginPath();
-                this.ctx.arc(startX, startY, Math.max(4, 5 / this.scale), 0, 2 * Math.PI);
+                this.ctx.arc(startX, startY, this.getScaledPointRadius(this.baseValues.pointRadius.motion), 0, 2 * Math.PI);
                 this.ctx.fill();
                 
                 // Mark end of coverage section
@@ -691,17 +913,17 @@ class CanvasManager {
                     const endX = endPoint.x * this.pixelsPerMeter;
                     const endY = endPoint.y * this.pixelsPerMeter;
 
-                    this.ctx.fillStyle = '#737BD4'; // Glaucous for end points
+                    this.ctx.fillStyle = this.styles.motion.end;
                     this.ctx.beginPath();
-                    this.ctx.arc(endX, endY, Math.max(4, 5 / this.scale), 0, 2 * Math.PI);
+                    this.ctx.arc(endX, endY, this.getScaledPointRadius(this.baseValues.pointRadius.motion), 0, 2 * Math.PI);
                     this.ctx.fill();
-                    this.ctx.fillStyle = '#E79F0D'; // Reset to Gamboge
+                    this.ctx.fillStyle = this.styles.motion.start; // Reset to start color
                 }
             }
         }
         
         // Draw navigation waypoints
-        this.ctx.fillStyle = '#2F96DA'; // Celestial Blue for navigation points
+        this.ctx.fillStyle = this.styles.motion.navigation;
         for (let i = 0; i < this.motionPlan.sections.length; i++) {
             const section = this.motionPlan.sections[i];
             
@@ -716,6 +938,11 @@ class CanvasManager {
                     this.ctx.fill();
                 }
             }
+        }
+        
+        // Draw section numbers if motion section numbers are enabled
+        if (this.showMotionSectionNumbers) {
+            this.drawMotionPlanSectionLabels();
         }
         
         this.ctx.restore();
@@ -734,9 +961,9 @@ class CanvasManager {
         const endY = y1 + (y2 - y1) * factor;
         
         this.ctx.save();
-        this.ctx.strokeStyle = '#27ae60';
-        this.ctx.fillStyle = '#27ae60';
-        this.ctx.lineWidth = Math.max(2, 3 / this.scale);
+        this.ctx.strokeStyle = this.styles.arrow.color;
+        this.ctx.fillStyle = this.styles.arrow.color;
+        this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.thick);
         
         // Draw arrow head
         this.ctx.beginPath();
@@ -758,8 +985,8 @@ class CanvasManager {
             
             // Draw obstacle polygon
             if (vertices.length >= 2) {
-                this.ctx.strokeStyle = '#e74c3c';
-                this.ctx.lineWidth = 2 / this.scale;
+                this.ctx.strokeStyle = this.styles.polygons.obstacleDrawing;
+                this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.normal);
                 this.ctx.beginPath();
                 this.ctx.moveTo(vertices[0].x * this.pixelsPerMeter, vertices[0].y * this.pixelsPerMeter);
                 for (let i = 1; i < vertices.length; i++) {
@@ -767,13 +994,13 @@ class CanvasManager {
                 }
                 if (vertices.length > 2) {
                     this.ctx.closePath();
-                    this.ctx.fillStyle = 'rgba(231, 76, 60, 0.15)';
+                    this.ctx.fillStyle = this.styles.polygons.obstacleFill;
                     this.ctx.fill();
                 }
                 this.ctx.stroke();
             }
             // Draw obstacle points
-            this.ctx.fillStyle = '#c0392b';
+            this.ctx.fillStyle = this.styles.polygons.obstacleVertex;
             const r = this.getPointRadius(false);
             for (const point of vertices) {
                 this.ctx.beginPath();
@@ -782,7 +1009,7 @@ class CanvasManager {
             }
 
             // Draw obstacle vertex numbers (if enabled)
-            if (this.showVertexNumbers) this.drawVertexLabels(vertices, '#c0392b');
+            if (this.showVertexNumbers) this.drawVertexLabels(vertices);
         }
     }
 
@@ -794,8 +1021,8 @@ class CanvasManager {
         
         // Draw current obstacle with same style as boundary but in red
         if (vertices.length >= 2) {
-            this.ctx.strokeStyle = '#e74c3c'; // Same red as finished obstacles
-            this.ctx.lineWidth = 3 / this.scale; // Same thickness as boundary
+            this.ctx.strokeStyle = this.styles.polygons.obstacleDrawing;
+            this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.thick);
             this.ctx.beginPath();
             this.ctx.moveTo(vertices[0].x * this.pixelsPerMeter, vertices[0].y * this.pixelsPerMeter);
             for (let i = 1; i < vertices.length; i++) {
@@ -804,14 +1031,14 @@ class CanvasManager {
             // Close the polygon if we have 3+ vertices (preview of final shape)
             if (vertices.length > 2) {
                 this.ctx.closePath();
-                this.ctx.fillStyle = 'rgba(231, 76, 60, 0.15)'; // Same fill as finished obstacles
+                this.ctx.fillStyle = this.styles.polygons.obstacleFill;
                 this.ctx.fill();
             }
             this.ctx.stroke();
         }
         
         // Draw current obstacle points with same style as boundary
-        this.ctx.fillStyle = '#c0392b';
+        this.ctx.fillStyle = this.styles.polygons.obstacleVertex;
         const r = this.getPointRadius(true);
         for (const point of vertices) {
             this.ctx.beginPath();
@@ -820,7 +1047,7 @@ class CanvasManager {
         }
 
         // Draw current obstacle vertex numbers (if enabled)
-        if (this.showVertexNumbers) this.drawVertexLabels(vertices, '#c0392b');
+        if (this.showVertexNumbers) this.drawVertexLabels(vertices);
     }
 
     drawGrid() {
@@ -831,8 +1058,8 @@ class CanvasManager {
             right: Math.ceil((this.canvas.width - this.offsetX) / this.scale / gridSize) * gridSize,
             bottom: Math.ceil((this.canvas.height - this.offsetY) / this.scale / gridSize) * gridSize
         };
-        this.ctx.strokeStyle = '#e0e0e0';
-        this.ctx.lineWidth = 1 / this.scale;
+        this.ctx.strokeStyle = this.styles.grid.line;
+        this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.thin);
         this.ctx.beginPath();
         for (let x = bounds.left; x <= bounds.right; x += gridSize) {
             this.ctx.moveTo(x, bounds.top);
@@ -843,8 +1070,8 @@ class CanvasManager {
             this.ctx.lineTo(bounds.right, y);
         }
         this.ctx.stroke();
-        this.ctx.strokeStyle = '#c0c0c0';
-        this.ctx.lineWidth = 2 / this.scale;
+        this.ctx.strokeStyle = this.styles.grid.axis;
+        this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.normal);
         this.ctx.beginPath();
         this.ctx.moveTo(-10, 0);
         this.ctx.lineTo(10, 0);
@@ -860,8 +1087,8 @@ class CanvasManager {
         const isCurrentlyDrawing = this.isDrawingBoundary;
         
         if (points.length >= 2) {
-            this.ctx.strokeStyle = '#48D583';
-            this.ctx.lineWidth = 3 / this.scale;
+            this.ctx.strokeStyle = this.styles.polygons.boundaryDrawing;
+            this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.thick);
             this.ctx.beginPath();
             this.ctx.moveTo(points[0].x * this.pixelsPerMeter, points[0].y * this.pixelsPerMeter);
             for (let i = 1; i < points.length; i++) {
@@ -869,7 +1096,7 @@ class CanvasManager {
             }
             if (points.length > 2) {
                 this.ctx.closePath();
-                this.ctx.fillStyle = 'rgba(39, 174, 96, 0.1)';
+                this.ctx.fillStyle = this.styles.polygons.boundaryFill;
                 this.ctx.fill();
             }
             this.ctx.stroke();
@@ -878,7 +1105,7 @@ class CanvasManager {
         // Draw points with different size/style based on drawing state
         if (isCurrentlyDrawing) {
             // Larger, more prominent points while drawing
-            this.ctx.fillStyle = '#229954';
+            this.ctx.fillStyle = this.styles.polygons.boundaryVertexDrawing;
             const r = this.getPointRadius(true);
             for (const point of points) {
                 this.ctx.beginPath();
@@ -887,7 +1114,7 @@ class CanvasManager {
             }
         } else {
             // Medium-sized points when completed (visible but not highlighted)
-            this.ctx.fillStyle = '#27ae60';
+            this.ctx.fillStyle = this.styles.polygons.boundaryVertexComplete;
             const r = this.getPointRadius(false);
             for (const point of points) {
                 this.ctx.beginPath();
@@ -897,20 +1124,15 @@ class CanvasManager {
         }
 
         // Draw boundary vertex numbers (if enabled)
-        if (this.showVertexNumbers) this.drawVertexLabels(points, '#1e8449');
+        if (this.showVertexNumbers) this.drawVertexLabels(points);
     }
 
     // Helper: draw vertex index labels centered inside each point
-    drawVertexLabels(vertices, color = '#000000') {
+    drawVertexLabels(vertices, color = null) {
         if (!vertices || vertices.length === 0) return;
 
-    // Slightly larger font to fit inside the vertex dot; scales with zoom
-    const fontPx = Math.max(7, Math.round(10 / this.scale));
-
-        // Configure text drawing styles: center/middle to place inside the dot
-        this.ctx.font = `${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
+        // Setup text using centralized styling
+        this.setupCanvasText(this.baseValues.fontSize.vertexLabel, 'center', 'middle');
 
         for (let i = 0; i < vertices.length; i++) {
             const v = vertices[i];
@@ -919,13 +1141,61 @@ class CanvasManager {
             const label = String(i + 1);
 
             // Dark outline for contrast against vertex fill
-            this.ctx.lineWidth = Math.max(1, 2 / this.scale);
-            this.ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+            this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.normal);
+            this.ctx.strokeStyle = this.styles.text.outline;
             this.ctx.strokeText(label, x, y);
 
             // White text inside the colored dot for readability
-            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillStyle = this.styles.text.contrast;
             this.ctx.fillText(label, x, y);
+        }
+    }
+
+    drawMotionPlanSectionLabels() {
+        if (!this.motionPlan || !this.motionPlan.sections || this.motionPlan.sections.length === 0) {
+            return;
+        }
+
+        // Setup text using centralized styling
+        this.setupCanvasText(this.baseValues.fontSize.motionLabel, 'center', 'middle');
+
+        for (let i = 0; i < this.motionPlan.sections.length; i++) {
+            const section = this.motionPlan.sections[i];
+            
+            if (section.coverage && section.coverage.length > 0) {
+                // Get section_id from the section data, or fall back to array index
+                const sectionId = section.section_id !== undefined ? section.section_id : i;
+                const label = String(sectionId);
+                
+                // Label start point
+                const startPoint = section.coverage[0];
+                const startX = startPoint.x * this.pixelsPerMeter;
+                const startY = startPoint.y * this.pixelsPerMeter;
+                
+                // Dark outline for contrast
+                this.ctx.lineWidth = this.getScaledLineWidth(this.baseValues.lineWidth.normal);
+                this.ctx.strokeStyle = this.styles.text.outline;
+                this.ctx.strokeText(label, startX, startY);
+                
+                // White text inside the start point
+                this.ctx.fillStyle = this.styles.text.contrast;
+                this.ctx.fillText(label, startX, startY);
+                
+                // Label end point (if different from start)
+                if (section.coverage.length > 1) {
+                    const endPoint = section.coverage[section.coverage.length - 1];
+                    const endX = endPoint.x * this.pixelsPerMeter;
+                    const endY = endPoint.y * this.pixelsPerMeter;
+                    
+                    // Dark outline for contrast
+                    this.ctx.strokeStyle = this.styles.text.outline;
+                    this.ctx.strokeText(label, endX, endY);
+                    
+                    // White text inside the end point
+                    this.ctx.fillStyle = this.styles.text.contrast;
+                    this.ctx.fillText(label, endX, endY);
+                }
+            }
         }
     }
 
@@ -951,7 +1221,7 @@ class CanvasManager {
         const iconSize = 16;
         
         // Set font for measuring
-        this.ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+        this.ctx.font = `bold ${this.baseValues.fontSize.notificationTitle}px ${this.styles.fonts.primary}`;
         
         // Measure text
         const textMetrics = this.ctx.measureText(this.notification);
@@ -967,22 +1237,22 @@ class CanvasManager {
         const y = 20;
         
         // Draw shadow
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        this.ctx.fillStyle = this.styles.notification.shadow;
         this.ctx.beginPath();
         this.ctx.roundRect(x + 2, y + 2, boxWidth, boxHeight, cornerRadius);
         this.ctx.fill();
         
         // Draw background with gradient
         const gradient = this.ctx.createLinearGradient(x, y, x, y + boxHeight);
-        gradient.addColorStop(0, 'rgba(45, 55, 72, 0.98)');
-        gradient.addColorStop(1, 'rgba(26, 32, 44, 0.98)');
+        gradient.addColorStop(0, this.styles.notification.bgStart);
+        gradient.addColorStop(1, this.styles.notification.bgEnd);
         this.ctx.fillStyle = gradient;
         this.ctx.beginPath();
         this.ctx.roundRect(x, y, boxWidth, boxHeight, cornerRadius);
         this.ctx.fill();
         
         // Draw subtle border
-        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        this.ctx.strokeStyle = this.styles.notification.border;
         this.ctx.lineWidth = 1;
         this.ctx.stroke();
         
@@ -991,21 +1261,21 @@ class CanvasManager {
         const iconY = y + boxHeight / 2;
         
         // Icon background circle
-        this.ctx.fillStyle = 'rgba(59, 130, 246, 0.9)'; // Blue
+        this.ctx.fillStyle = this.styles.notification.iconBg;
         this.ctx.beginPath();
         this.ctx.arc(iconX + iconSize/2, iconY, iconSize/2, 0, Math.PI * 2);
         this.ctx.fill();
         
         // Icon text "i"
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        this.ctx.fillStyle = this.styles.notification.iconText;
+        this.ctx.font = `bold ${this.baseValues.fontSize.notificationIcon}px ${this.styles.fonts.primary}`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText('i', iconX + iconSize/2, iconY);
         
         // Draw main text
-        this.ctx.fillStyle = '#e2e8f0';
-        this.ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+        this.ctx.fillStyle = this.styles.notification.text;
+        this.ctx.font = `${this.baseValues.fontSize.notificationTitle}px ${this.styles.fonts.primary}`;
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(this.notification, iconX + iconSize + 8, iconY, maxWidth);
