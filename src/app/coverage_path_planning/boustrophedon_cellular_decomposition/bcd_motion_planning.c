@@ -537,6 +537,25 @@ static point_t find_boundary_intersection(const bcd_cell_t *cell, point_t from_p
 
 // --- --- COMPUTE_CONNECTION_MOTION
 
+/**
+ * Compute navigation path between two points in potentially different BCD cells.
+ * 
+ * This function implements a pathfinding algorithm that can handle:
+ * 1. Same-cell navigation: Direct path when both points are in the same cell
+ * 2. Adjacent-cell navigation: Path through shared boundaries between neighboring cells
+ * 3. Multi-cell transit: Uses BFS shortest-path algorithm through intermediate cells
+ * 
+ * The algorithm finds exit and entry points on cell boundaries to create an optimal
+ * navigation path that respects the BCD cell structure and boundaries.
+ * 
+ * @param cell_list Array of all BCD cells with boundary and neighbor information
+ * @param path_list Sequence of cells to visit (provides context but not directly used)
+ * @param begin_cell_index Index of the starting cell
+ * @param begin_point Exact starting point within the beginning cell
+ * @param end_cell_index Index of the destination cell  
+ * @param end_point Exact destination point within the ending cell
+ * @return Navigation path as array of points from begin_point to end_point, or NULL on error
+ */
 static cvector_vector_type(point_t) compute_connection_motion(const cvector_vector_type(bcd_cell_t) * cell_list,
                                                               const cvector_vector_type(int) * path_list,
                                                               int begin_cell_index,
