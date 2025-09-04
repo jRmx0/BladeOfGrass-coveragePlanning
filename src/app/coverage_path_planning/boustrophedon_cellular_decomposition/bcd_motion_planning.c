@@ -403,7 +403,139 @@ static void add_edge_transition_path(cvector_vector_type(point_t) * path,
     }
 }
 
-// --- --- COMPUTE_BOUSTROPHEDON_MOTION
+// --- --- HELPER FUNCTIONS FOR COMPUTE_CONNECTION_MOTION
+
+// Find the best exit point from a cell boundary toward a target point
+static point_t find_exit_point(const bcd_cell_t *cell, point_t target_point)
+{
+    point_t exit_point = {0};
+    float min_distance = INFINITY;
+    
+    // Check ceiling edges
+    if (cell->ceiling_edge_list != NULL)
+    {
+        for (size_t i = 0; i < cvector_size(cell->ceiling_edge_list); ++i)
+        {
+            const polygon_edge_t *edge = &cell->ceiling_edge_list[i];
+            
+            // Test both endpoints of the edge
+            float dist_begin = sqrt(pow(edge->begin.x - target_point.x, 2) + pow(edge->begin.y - target_point.y, 2));
+            float dist_end = sqrt(pow(edge->end.x - target_point.x, 2) + pow(edge->end.y - target_point.y, 2));
+            
+            if (dist_begin < min_distance)
+            {
+                min_distance = dist_begin;
+                exit_point = edge->begin;
+            }
+            if (dist_end < min_distance)
+            {
+                min_distance = dist_end;
+                exit_point = edge->end;
+            }
+        }
+    }
+    
+    // Check floor edges
+    if (cell->floor_edge_list != NULL)
+    {
+        for (size_t i = 0; i < cvector_size(cell->floor_edge_list); ++i)
+        {
+            const polygon_edge_t *edge = &cell->floor_edge_list[i];
+            
+            // Test both endpoints of the edge
+            float dist_begin = sqrt(pow(edge->begin.x - target_point.x, 2) + pow(edge->begin.y - target_point.y, 2));
+            float dist_end = sqrt(pow(edge->end.x - target_point.x, 2) + pow(edge->end.y - target_point.y, 2));
+            
+            if (dist_begin < min_distance)
+            {
+                min_distance = dist_begin;
+                exit_point = edge->begin;
+            }
+            if (dist_end < min_distance)
+            {
+                min_distance = dist_end;
+                exit_point = edge->end;
+            }
+        }
+    }
+    
+    // Fallback to cell center if no edges found
+    if (min_distance == INFINITY)
+    {
+        exit_point.x = (cell->c_begin.x + cell->c_end.x) / 2.0f;
+        exit_point.y = (cell->c_begin.y + cell->c_end.y) / 2.0f;
+    }
+    
+    return exit_point;
+}
+
+// Find the best entry point into a cell boundary from a source point
+static point_t find_entry_point(const bcd_cell_t *cell, point_t source_point)
+{
+    // For simplicity, use the same logic as find_exit_point
+    // In a more sophisticated implementation, this could consider
+    // the direction of approach and cell geometry
+    return find_exit_point(cell, source_point);
+}
+
+// Check if two cells are adjacent (share a boundary)
+static bool are_cells_adjacent(const bcd_cell_t *cell1, const bcd_cell_t *cell2)
+{
+    // Check if cell2 is in cell1's neighbor list
+    bcd_neighbor_node_t *neighbor = cell1->neighbor_list.head;
+    while (neighbor != NULL)
+    {
+        // We need to find the cell index somehow - this is a limitation
+        // For now, we'll use a simpler geometric check
+        neighbor = neighbor->next;
+    }
+    
+    // Simplified geometric adjacency check - cells are adjacent if they share x coordinates
+    const float tolerance = 0.001f;
+    
+    // Check if cell boundaries are close (indicating shared boundary)
+    bool x_overlap = (fabs(cell1->c_end.x - cell2->c_begin.x) < tolerance) ||
+                     (fabs(cell1->c_begin.x - cell2->c_end.x) < tolerance);
+                     
+    if (x_overlap)
+    {
+        // Check if y ranges overlap
+        float cell1_y_min = fmin(cell1->c_begin.y, cell1->c_end.y);
+        float cell1_y_max = fmax(cell1->c_begin.y, cell1->c_end.y);
+        float cell2_y_min = fmin(cell2->c_begin.y, cell2->c_end.y);
+        float cell2_y_max = fmax(cell2->c_begin.y, cell2->c_end.y);
+        
+        return !(cell1_y_max < cell2_y_min || cell2_y_max < cell1_y_min);
+    }
+    
+    return false;
+}
+
+// Find intersection point between a point and cell boundary (placeholder)
+static point_t find_boundary_intersection(const bcd_cell_t *cell, point_t from_point, point_t to_point)
+{
+    // Simplified implementation - return midpoint of cell boundary
+    point_t intersection;
+    intersection.x = (cell->c_begin.x + cell->c_end.x) / 2.0f;
+    intersection.y = (cell->c_begin.y + cell->c_end.y) / 2.0f;
+    return intersection;
+}
+
+// --- --- HELPER FUNCTIONS FOR COMPUTE_CONNECTION_MOTION
+
+// Find the best exit point from a cell boundary toward a target point
+static point_t find_exit_point(const bcd_cell_t *cell, point_t target_point);
+
+// Find the best entry point into a cell boundary from a source point  
+static point_t find_entry_point(const bcd_cell_t *cell, point_t source_point);
+
+// Check if two cells are adjacent (share a boundary)
+static bool are_cells_adjacent(const bcd_cell_t *cell1, const bcd_cell_t *cell2);
+
+// Find intersection point between a point and cell boundary
+static point_t find_boundary_intersection(const bcd_cell_t *cell, point_t from_point, point_t to_point);
+
+// --- --- COMPUTE_CONNECTION_MOTION
 
 static cvector_vector_type(point_t) compute_connection_motion(const cvector_vector_type(bcd_cell_t) * cell_list,
                                                               const cvector_vector_type(int) * path_list,
@@ -412,7 +544,97 @@ static cvector_vector_type(point_t) compute_connection_motion(const cvector_vect
                                                               int end_cell_index,
                                                               point_t end_point)
 {
-    return NULL;
+    cvector_vector_type(point_t) nav_path = NULL;
+    
+    // Input validation
+    if (!cell_list || begin_cell_index < 0 || end_cell_index < 0 ||
+        begin_cell_index >= cvector_size(*cell_list) || end_cell_index >= cvector_size(*cell_list))
+    {
+        return nav_path;
+    }
+    
+    // Case 1: Same cell - direct path
+    if (begin_cell_index == end_cell_index)
+    {
+        cvector_push_back(nav_path, begin_point);
+        cvector_push_back(nav_path, end_point);
+        return nav_path;
+    }
+    
+    const bcd_cell_t *begin_cell = &(*cell_list)[begin_cell_index];
+    const bcd_cell_t *end_cell = &(*cell_list)[end_cell_index];
+    
+    // Case 2: Adjacent cells - find shared boundary
+    if (are_cells_adjacent(begin_cell, end_cell))
+    {
+        cvector_push_back(nav_path, begin_point);
+        
+        // Find exit point from begin_cell toward end_point
+        point_t exit_point = find_exit_point(begin_cell, end_point);
+        cvector_push_back(nav_path, exit_point);
+        
+        // Find entry point into end_cell from exit_point
+        point_t entry_point = find_entry_point(end_cell, exit_point);
+        if (exit_point.x != entry_point.x || exit_point.y != entry_point.y)
+        {
+            cvector_push_back(nav_path, entry_point);
+        }
+        
+        cvector_push_back(nav_path, end_point);
+        return nav_path;
+    }
+    
+    // Case 3: Non-adjacent cells - find path through transit cells
+    cvector_vector_type(int) cell_path = find_shortest_path(begin_cell_index, end_cell_index, 
+                                                            (cvector_vector_type(bcd_cell_t) *)cell_list);
+    
+    if (cell_path == NULL || cvector_size(cell_path) == 0)
+    {
+        // No path found - return direct line as fallback
+        cvector_push_back(nav_path, begin_point);
+        cvector_push_back(nav_path, end_point);
+        cvector_free(cell_path);
+        return nav_path;
+    }
+    
+    cvector_push_back(nav_path, begin_point);
+    
+    // Navigate through each transit cell
+    for (size_t i = 0; i < cvector_size(cell_path) - 1; ++i)
+    {
+        int current_cell_idx = cell_path[i];
+        int next_cell_idx = cell_path[i + 1];
+        
+        const bcd_cell_t *current_cell = &(*cell_list)[current_cell_idx];
+        const bcd_cell_t *next_cell = &(*cell_list)[next_cell_idx];
+        
+        // Find exit point from current cell
+        point_t target;
+        if (i == cvector_size(cell_path) - 2) 
+        {
+            target = end_point;
+        } 
+        else 
+        {
+            target.x = (next_cell->c_begin.x + next_cell->c_end.x) / 2.0f;
+            target.y = (next_cell->c_begin.y + next_cell->c_end.y) / 2.0f;
+        }
+        
+        point_t exit_point = find_exit_point(current_cell, target);
+        cvector_push_back(nav_path, exit_point);
+        
+        // Find entry point into next cell
+        point_t entry_point = find_entry_point(next_cell, exit_point);
+        if (exit_point.x != entry_point.x || exit_point.y != entry_point.y)
+        {
+            cvector_push_back(nav_path, entry_point);
+        }
+    }
+    
+    cvector_push_back(nav_path, end_point);
+    cvector_free(cell_path);
+    
+    return nav_path;
 }
 
 // MOTION_PLAN HELPERS
