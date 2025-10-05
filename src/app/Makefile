@@ -1,7 +1,8 @@
 .PHONY: all clean
 
 CC = gcc
-CFLAGS = -I./cJSON -I./coverage_path_planning -I./coverage_path_planning/boustrophedon_cellular_decomposition
+CFLAGS = -I./cJSON -I./coverage_path_planning -I./coverage_path_planning/boustrophedon_cellular_decomposition \
+	-D_CRT_RAND_S -D_WIN32_WINNT=0x0600 -DWIN32_LEAN_AND_MEAN -DNOMINMAX
 LIBS = -lws2_32
 SRC = main.c webserver.c \
 	coverage_path_planning/coverage_path_planning.c \
