@@ -32,68 +32,6 @@ static char *err_cleanup(input_environment_t *env,
 						 bcd_motion_plan_t *motion_plan,
 						 int rc);
 
-char *coverage_path_planning_process(const char *input_environment_json)
-{
-	input_environment_t env;
-
-	int rc = parse_input_environment_json(input_environment_json, &env);
-	if (rc != 0)
-	{
-		printf("coverage_path_planning: parse failed (code %d)\n", rc);
-		return err_cleanup(&env, NULL, NULL, NULL, NULL, rc);
-	}
-
-	bcd_event_list_t event_list;
-	event_list.bcd_events = NULL;
-	event_list.length = 0;
-
-	rc = build_bcd_event_list(&env, &event_list);
-	if (rc != 0)
-	{
-		printf("coverage_path_planning: BCD event list generation failed (code %d)\n", rc);
-		return err_cleanup(&env, &event_list, NULL, NULL, NULL, rc);
-	}
-	printf("coverage_path_planning: successfully generated %d events\n", event_list.length);
-
-	cvector_vector_type(bcd_cell_t) cell_list = NULL;
-	rc = compute_bcd_cells(&event_list, &cell_list);
-	if (rc != 0)
-	{
-		printf("coverage_path_planning: BCD cell computation failed (code %d)\n", rc);
-		return err_cleanup(&env, &event_list, &cell_list, NULL, NULL, rc);
-	}
-	printf("coverage_path_planning: successfully generated %d cells\n", cvector_size(cell_list));
-	// log_bcd_cell_list((const cvector_vector_type(bcd_cell_t) *) &cell_list);
-
-	cvector_vector_type(int) path_list = NULL;
-	rc = compute_bcd_path_list(&cell_list, -1, &path_list);
-	if (rc != 0)
-	{
-		printf("coverage_path_planning: BCD path computation failed (code %d)\n", rc);
-		return err_cleanup(&env, &event_list, &cell_list, &path_list, NULL, rc);
-	}
-	printf("coverage_path_planning: successfully generated path with %d visits\n", cvector_size(path_list));
-	// log_bcd_path_list((const cvector_vector_type(int) *)&path_list);
-
-	bcd_motion_plan_t motion_plan = {0};
-	rc = compute_bcd_motion(&cell_list,
-							(const cvector_vector_type(int) *)&path_list,
-							&motion_plan, 
-							0.25);
-	if (rc != 0)
-	{
-		printf("coverage_path_planning: BCD motion computation failed (code %d)\n", rc);
-		return err_cleanup(&env, &event_list, &cell_list, &path_list, &motion_plan, rc);
-	}
-	log_bcd_motion(motion_plan);
-
-	char *json_out = serialize_result_json(&event_list, &cell_list, &path_list, &motion_plan);
-
-	err_cleanup(&env, &event_list, &cell_list, &path_list, &motion_plan, rc);
-
-	return json_out;
-}
-
 static int parse_input_environment_json(const char *json,
 										input_environment_t *env)
 {
