@@ -264,8 +264,7 @@ static void in_find_prev_cell(const bcd_event_t curr_evt,
     point_t closest_c_pt;
     point_t closest_f_pt;
 
-    size_t i;
-    for (i = 0; i < cvector_size(*cell_list); ++i)
+    for (size_t i = 0; i < cvector_size(*cell_list); ++i)
     {
         if (!(*cell_list)[i].open)
             continue;
@@ -646,6 +645,8 @@ static float calc_evt_to_edge_dist(point_t evt_vertex, polygon_edge_t cell_edge,
 
     if (slice < min_edge_x || slice > max_edge_x)
     {
+        intersection->x = 0;
+        intersection->y = 0;
         return INFINITY;
     }
 
