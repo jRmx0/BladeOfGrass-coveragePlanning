@@ -463,20 +463,6 @@ static int compare_events(const void *a,
         return 0;
 }
 
-// log_vertex_with_angles(poly, poly.vertices[vertex_index], floor_edge_index, floor_angle, ceiling_edge_index, ceil_angle);
-static void log_vertex_with_angles(const polygon_t poly,
-                                   point_t v,
-                                   int f_e_i,
-                                   float floor_angle,
-                                   int c_e_i,
-                                   float ceil_angle)
-{
-    printf("BCD debug: vertex=(%.3f, %.3f)\n          f_e_b=(%.3f, %.3f), f_e_e=(%.3f, %.3f), f_a=%.2f deg,\n          c_e_b=(%.3f, %.3f), c_e_e=(%.3f, %.3f), c_a=%.2f deg\n",
-           v.x, v.y,
-           poly.edges[f_e_i].begin.x, poly.edges[f_e_i].begin.y, poly.edges[f_e_i].end.x, poly.edges[f_e_i].end.y, floor_angle,
-           poly.edges[c_e_i].begin.x, poly.edges[c_e_i].begin.y, poly.edges[c_e_i].end.x, poly.edges[c_e_i].end.y, ceil_angle);
-}
-
 void free_bcd_event_list(bcd_event_list_t *event_list)
 {
     if (!event_list)
