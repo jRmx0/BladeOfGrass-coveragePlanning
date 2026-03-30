@@ -67,8 +67,7 @@ int compute_bcd_motion(cvector_vector_type(bcd_cell_t) * cell_list,
     point_t end_point = {0};
     bool compute_nav = false;
 
-    size_t i;
-    for (i = 0; i < cvector_size(*path_list); ++i)
+    for (size_t i = 0; i < cvector_size(*path_list); ++i)
     {
         if ((*cell_list)[(*path_list)[i]].cleaned == true)
         {
